@@ -1,6 +1,11 @@
-# Data Harmonization for Teaching Modules
-
-# Update data_path below to point at your local data directory.
+# Build the local CSVs that sit between the raw inputs and the Shiny app.
+#
+# Put the raw inputs in data/raw_inputs/, then run:
+#   Rscript data_harmonization.R data data
+#
+# You can also pass directories with:
+#   HYDRO_MODULES_SOURCE_DATA_DIR
+#   HYDRO_MODULES_HARMONIZED_OUTPUT_DIR
 
 rm(list = ls())
 
@@ -9,9 +14,130 @@ if (!require("librarian")) {
 }
 librarian::shelf(dplyr, ggplot2, data.table, lubridate, tidyr, stringr, readr)
 
-data_path <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Hydrology_Lab/CUAHSI-teaching-modules-shiny/data"
+args <- commandArgs(trailingOnly = TRUE)
 
-# standardizes the LTER + Stream_Name combo into a single join key
+resolve_dir <- function(cli_value, env_var, default = NULL, label) {
+  env_value <- Sys.getenv(env_var, unset = "")
+  value <- if (!is.na(cli_value) && nzchar(cli_value)) {
+    cli_value
+  } else if (nzchar(env_value)) {
+    env_value
+  } else {
+    default
+  }
+
+  if (is.null(value) || !nzchar(value)) {
+    stop(
+      paste(
+        "Missing", label, "- pass it as a command-line argument or set", env_var
+      )
+    )
+  }
+
+  value
+}
+
+find_input_file <- function(search_root, file_name, preferred_rel_paths = character()) {
+  candidate_paths <- unique(c(
+    file.path(search_root, preferred_rel_paths),
+    file.path(search_root, file_name)
+  ))
+  existing_candidates <- candidate_paths[file.exists(candidate_paths)]
+
+  if (length(existing_candidates) > 0) {
+    return(existing_candidates[1])
+  }
+
+  pattern <- paste0("^", gsub("\\.", "\\\\.", basename(file_name)), "$")
+  discovered <- list.files(
+    search_root,
+    pattern = pattern,
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  discovered <- discovered[file.exists(discovered)]
+  if (length(discovered) > 0) {
+    discovered <- discovered[order(nchar(discovered))]
+    return(discovered[1])
+  }
+
+  stop(
+    paste(
+      "Could not locate required input", file_name,
+      "under", normalizePath(search_root, mustWork = FALSE)
+    )
+  )
+}
+
+input_root <- resolve_dir(
+  cli_value = args[1],
+  env_var = "HYDRO_MODULES_SOURCE_DATA_DIR",
+  default = "data",
+  label = "source data search directory"
+)
+output_path <- if (length(args) >= 2 && nzchar(args[2])) {
+  args[2]
+} else {
+  Sys.getenv(
+    "HYDRO_MODULES_HARMONIZED_OUTPUT_DIR",
+    unset = input_root
+  )
+}
+if (!nzchar(output_path)) {
+  output_path <- input_root
+}
+dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
+
+chem_file <- find_input_file(
+  input_root,
+  "20260105_masterdata_chem.csv",
+  preferred_rel_paths = c(
+    "raw_inputs/20260105_masterdata_chem.csv",
+    "20260105_masterdata_chem.csv"
+  )
+)
+discharge_file <- find_input_file(
+  input_root,
+  "20260106_masterdata_discharge.csv",
+  preferred_rel_paths = c(
+    "raw_inputs/20260106_masterdata_discharge.csv",
+    "20260106_masterdata_discharge.csv"
+  )
+)
+kg_file <- find_input_file(
+  input_root,
+  "Koeppen_Geiger_2.csv",
+  preferred_rel_paths = c(
+    "raw_inputs/Koeppen_Geiger_2.csv",
+    "Koeppen_Geiger_2.csv"
+  )
+)
+spatial_driver_file <- find_input_file(
+  input_root,
+  "all-data_si-extract_2_20250325.csv",
+  preferred_rel_paths = c(
+    "raw_inputs/all-data_si-extract_2_20250325.csv",
+    "all-data_si-extract_2_20250325.csv"
+  )
+)
+lulc_file <- find_input_file(
+  input_root,
+  "DSi_LULC_filled_interpolated_Simple.csv",
+  preferred_rel_paths = c(
+    "raw_inputs/DSi_LULC_filled_interpolated_Simple.csv",
+    "DSi_LULC_filled_interpolated_Simple.csv"
+  )
+)
+
+cat("Searching inputs under:", normalizePath(input_root), "\n")
+cat("Writing workflow CSVs to:", normalizePath(output_path, mustWork = FALSE), "\n")
+cat("  chem:", chem_file, "\n")
+cat("  discharge:", discharge_file, "\n")
+cat("  climate:", kg_file, "\n")
+cat("  spatial drivers:", spatial_driver_file, "\n")
+cat("  LULC:", lulc_file, "\n")
+
+# Standardize the LTER + Stream_Name combo into one join key.
 create_stream_id <- function(df) {
   df %>%
     mutate(
@@ -21,46 +147,79 @@ create_stream_id <- function(df) {
     )
 }
 
-north_american_lter <- c(
-  "Canada",
-  "USGS",
-  "AND",
-  "ARC",
-  "BcCZO",
-  "BNZ",
-  "ColoradoAlpine",
-  "CZO-Catalina Jemez",
-  "Catalina Jemez",
-  "EastRiverSFA",
-  "GRO",
-  "HBR",
-  "Ipswitch(Carey)",
-  "KNZ",
-  "LMP",
-  "LMP(Wymore)",
-  "LUQ",
-  "NWT",
-  "PIE",
-  "Sagehen",
-  "Sagehen(Sullivan)",
-  "UMR",
-  "UMR(Jankowski)",
-  "WalkerBranch",
-  "Walker Branch"
-)
+safe_max_numeric <- function(x) {
+  if (all(is.na(x))) {
+    return(NA_real_)
+  }
+  max(x, na.rm = TRUE)
+}
+
+safe_mean_numeric <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) {
+    return(NA_real_)
+  }
+  mean(x, na.rm = TRUE)
+}
+
+# Use the climate file to define the North American site pool instead of
+# hard-coding network names. That keeps the filter tied to site location.
+kg_data <- read.csv(
+  kg_file,
+  stringsAsFactors = FALSE
+) %>%
+  create_stream_id() %>%
+  select(Stream_ID, ClimateZ, Latitude, Longitude, Name)
+
+north_american_site_ids <- kg_data %>%
+  filter(
+    !is.na(Longitude),
+    !is.na(Latitude),
+    between(Longitude, -170, -50),
+    between(Latitude, 15, 85)
+  ) %>%
+  pull(Stream_ID) %>%
+  unique()
+
+kg_data <- kg_data %>%
+  filter(Stream_ID %in% north_american_site_ids)
+
+spatial_drivers_raw <- read.csv(
+  spatial_driver_file,
+  stringsAsFactors = FALSE
+) %>%
+  create_stream_id() %>%
+  filter(Stream_ID %in% north_american_site_ids)
+
+cat("North American sites in climate table:", length(north_american_site_ids), "\n")
 
 
 # --- Load and filter raw data ---------------------------------------------
 
 chem_na <- read.csv(
-  file.path(data_path, "raw_inputs/20260105_masterdata_chem.csv"),
+  chem_file,
   stringsAsFactors = FALSE
 ) %>%
-  filter(LTER %in% north_american_lter) %>%
   create_stream_id() %>%
+  filter(Stream_ID %in% north_american_site_ids) %>%
   filter(variable %in% c("Cl", "NO3", "NOx")) %>%
   mutate(variable = if_else(variable == "NOx", "NO3", variable)) %>%
-  filter(!is.na(value)) %>%
+  filter(!is.na(value))
+
+unexpected_chem_units <- chem_na %>%
+  filter(variable %in% c("Cl", "NO3")) %>%
+  filter(is.na(units) | units != "uM")
+
+if (nrow(unexpected_chem_units) > 0) {
+  stop(
+    paste(
+      "Expected Cl and NO3 in the master chemistry file to be reported in uM.",
+      "Unexpected units were found for:",
+      paste(sort(unique(unexpected_chem_units$units)), collapse = ", ")
+    )
+  )
+}
+
+chem_na <- chem_na %>%
   mutate(
     value = case_when(
       variable == "Cl" ~ value * 35.453 / 1000,
@@ -69,11 +228,11 @@ chem_na <- read.csv(
   )
 
 discharge_na <- read.csv(
-  file.path(data_path, "raw_inputs/20260106_masterdata_discharge.csv"),
+  discharge_file,
   stringsAsFactors = FALSE
 ) %>%
-  filter(LTER %in% north_american_lter) %>%
   create_stream_id() %>%
+  filter(Stream_ID %in% north_american_site_ids) %>%
   rename(Q = Qcms) %>%
   mutate(Date = as.Date(Date))
 
@@ -151,24 +310,12 @@ sites_info <- chem_na %>%
 sites_with_discharge <- sites_info %>%
   left_join(discharge_metrics, by = c("Stream_ID", "LTER", "Stream_Name"))
 
-kg_data <- read.csv(
-  file.path(data_path, "raw_inputs/Koeppen_Geiger_2.csv"),
-  stringsAsFactors = FALSE
-) %>%
-  create_stream_id() %>%
-  select(Stream_ID, ClimateZ, Latitude, Longitude, Name)
-
-spatial_drivers_raw <- read.csv(
-  file.path(data_path, "raw_inputs/all-data_si-extract_2_20250325.csv"),
-  stringsAsFactors = FALSE
-) %>%
-  create_stream_id()
-
 spatial_drivers <- spatial_drivers_raw %>%
   select(
     Stream_ID,
     LTER,
     Stream_Name,
+    Shapefile_Name,
     basin_slope_mean_degree,
     basin_slope_median_degree,
     elevation_mean_m,
@@ -176,54 +323,79 @@ spatial_drivers <- spatial_drivers_raw %>%
     starts_with("precip_"),
     starts_with("temp_"),
     starts_with("evapotrans_"),
-    starts_with("land_"),
     major_land,
     major_rock,
     major_soil
+  ) %>%
+  rename(
+    major_land_spatial = major_land
   )
 
-# average annual precip and snow days from the yearly columns in spatial drivers
-snow_precip_data <- spatial_drivers_raw %>%
+# Keep the yearly climate columns, then add site-average climate summaries
+# alongside them so the app can use either the annual record or the
+# condensed site-level version.
+yearly_precip_cols <- grep(
+  "^precip_[0-9]{4}_mm_per_day$",
+  names(spatial_drivers_raw),
+  value = TRUE
+)
+yearly_temp_cols <- grep(
+  "^temp_[0-9]{4}_degC$",
+  names(spatial_drivers_raw),
+  value = TRUE
+)
+yearly_evapotrans_cols <- grep(
+  "^evapotrans_[0-9]{4}_kg_m2$",
+  names(spatial_drivers_raw),
+  value = TRUE
+)
+yearly_snow_day_cols <- grep(
+  "^snow_[0-9]{4}_num_days$",
+  names(spatial_drivers_raw),
+  value = TRUE
+)
+monthly_snow_cover_cols <- grep(
+  "^snow_(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)_avg_prop_area$",
+  names(spatial_drivers_raw),
+  value = TRUE
+)
+
+climate_summary_data <- spatial_drivers_raw %>%
   rowwise() %>%
   mutate(
-    mean_annual_precip = mean(
-      c_across(matches("precip_[0-9]{4}_mm_per_day")),
-      na.rm = TRUE
-    ) *
-      365,
-    mean_snow_days = mean(
-      c_across(matches("snow_[0-9]{4}_num_days")),
-      na.rm = TRUE
+    mean_annual_precip = safe_mean_numeric(c_across(any_of(yearly_precip_cols))) * 365,
+    mean_annual_temp = safe_mean_numeric(c_across(any_of(yearly_temp_cols))),
+    mean_annual_evapotrans = safe_mean_numeric(c_across(any_of(yearly_evapotrans_cols))),
+    mean_snow_days = safe_mean_numeric(c_across(any_of(yearly_snow_day_cols))),
+    # MODIS snow-cover fields are stored by month, so keep the site-level
+    # annual summary as the simple mean of those monthly proportions.
+    snow_cover = if (length(monthly_snow_cover_cols) > 0) {
+      safe_mean_numeric(c_across(all_of(monthly_snow_cover_cols)))
+    } else {
+      mean_snow_days / 365
+    },
+    mean_snow_prop_area = safe_mean_numeric(
+      c_across(matches("snow_[0-9]{4}_max_prop_area"))
     ),
-    snow_fraction = mean_snow_days / 365,
-    mean_snow_prop_area = mean(
-      c_across(matches("snow_[0-9]{4}_max_prop_area")),
-      na.rm = TRUE
-    ),
-    peak_snow_prop_area = max(
-      c_across(matches("snow_[0-9]{4}_max_prop_area")),
-      na.rm = TRUE
+    peak_snow_prop_area = safe_max_numeric(
+      c_across(matches("snow_[0-9]{4}_max_prop_area"))
     )
   ) %>%
   ungroup() %>%
-  mutate(
-    peak_snow_prop_area = if_else(
-      is.infinite(peak_snow_prop_area),
-      NA_real_,
-      peak_snow_prop_area
-    )
-  ) %>%
   select(
     Stream_ID,
     mean_annual_precip,
+    mean_annual_temp,
+    mean_annual_evapotrans,
     mean_snow_days,
-    snow_fraction,
+    snow_cover,
     mean_snow_prop_area,
-    peak_snow_prop_area
+    peak_snow_prop_area,
+    all_of(monthly_snow_cover_cols)
   )
 
 lulc_data <- read.csv(
-  file.path(data_path, "raw_inputs/DSi_LULC_filled_interpolated_Simple.csv"),
+  lulc_file,
   stringsAsFactors = FALSE
 ) %>%
   filter(Year >= 2002, Year <= 2022) %>%
@@ -242,18 +414,17 @@ lulc_data <- read.csv(
   )
 
 lulc_avg <- lulc_data %>%
-  mutate(Stream_ID = paste0(Stream_Name, "_", Stream_Name)) %>%
   group_by(Stream_Name) %>%
   summarise(
     across(starts_with("land_"), ~ mean(.x, na.rm = TRUE)),
     .groups = "drop"
   ) %>%
   mutate(
-    major_land_lulc = apply(select(., starts_with("land_")), 1, function(x) {
+    major_land = apply(select(., starts_with("land_")), 1, function(x) {
       if (all(is.na(x))) {
         NA_character_
       } else {
-        names(x)[which.max(x)]
+        sub("^land_", "", names(x)[which.max(x)])
       }
     })
   )
@@ -265,7 +436,10 @@ harmonized_data <- sites_with_discharge %>%
   left_join(kg_data, by = "Stream_ID") %>%
   left_join(spatial_drivers, by = c("Stream_ID", "LTER", "Stream_Name")) %>%
   left_join(lulc_avg, by = "Stream_Name") %>%
-  left_join(snow_precip_data, by = "Stream_ID") %>%
+  left_join(climate_summary_data, by = "Stream_ID") %>%
+  mutate(
+    major_land = coalesce(major_land, major_land_spatial)
+  ) %>%
   # drop sites outside North America (catches some Russian GRO sites)
   filter(
     is.na(Longitude) | (Longitude >= -170 & Longitude <= -50),
@@ -274,7 +448,7 @@ harmonized_data <- sites_with_discharge %>%
 
 write.csv(
   harmonized_data,
-  file.path(data_path, "harmonized_north_america_partial.csv"),
+  file.path(output_path, "harmonized_north_america_partial.csv"),
   row.names = FALSE
 )
 
@@ -285,13 +459,13 @@ complete_cases <- harmonized_data %>%
     !is.na(recession_slope),
     !is.na(ClimateZ),
     !is.na(mean_annual_precip),
-    !is.na(snow_fraction),
+    !is.na(snow_cover),
     !is.na(major_land)
   )
 
 write.csv(
   complete_cases,
-  file.path(data_path, "harmonized_north_america_complete.csv"),
+  file.path(output_path, "harmonized_north_america_complete.csv"),
   row.names = FALSE
 )
 
@@ -306,7 +480,7 @@ discharge_na_export <- discharge_na %>%
 
 write.csv(
   discharge_na_export,
-  file.path(data_path, "discharge_north_america.csv"),
+  file.path(output_path, "discharge_north_america.csv"),
   row.names = FALSE
 )
 
@@ -339,11 +513,12 @@ cl_monthly <- cl_data %>%
 
 write.csv(
   cl_monthly,
-  file.path(data_path, "cl_monthly_summary.csv"),
+  file.path(output_path, "cl_monthly_summary.csv"),
   row.names = FALSE
 )
 
-# add site-level mean Cl to the harmonized partial file
+# overwrite the earlier partial export with the chloride-enriched version that
+# Activity 2 uses for mapping and site selection
 harmonized_with_cl <- harmonized_data %>%
   left_join(
     cl_site_stats %>%
@@ -353,7 +528,7 @@ harmonized_with_cl <- harmonized_data %>%
 
 write.csv(
   harmonized_with_cl,
-  file.path(data_path, "harmonized_north_america_partial.csv"),
+  file.path(output_path, "harmonized_north_america_partial.csv"),
   row.names = FALSE
 )
 
@@ -382,7 +557,7 @@ cq_paired <- cq_chem %>%
 
 write.csv(
   cq_paired,
-  file.path(data_path, "cq_paired_obs.csv"),
+  file.path(output_path, "cq_paired_obs.csv"),
   row.names = FALSE
 )
 
@@ -416,4 +591,17 @@ cq_slopes <- cq_paired %>%
   group_modify(~ fit_cq_slope(.x)) %>%
   ungroup()
 
-write.csv(cq_slopes, file.path(data_path, "cq_slopes.csv"), row.names = FALSE)
+write.csv(cq_slopes, file.path(output_path, "cq_slopes.csv"), row.names = FALSE)
+
+cat(
+  "\nDone! Wrote workflow CSVs to",
+  normalizePath(output_path),
+  "\n",
+  " - harmonized_north_america_partial.csv\n",
+  " - harmonized_north_america_complete.csv\n",
+  " - discharge_north_america.csv\n",
+  " - cl_monthly_summary.csv\n",
+  " - cq_paired_obs.csv\n",
+  " - cq_slopes.csv\n",
+  sep = ""
+)

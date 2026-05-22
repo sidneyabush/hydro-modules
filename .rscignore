@@ -1,0 +1,14 @@
+.git
+.gitignore
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+README.md
+docs
+prep_data.R
+data_harmonization.R
+deploy_shinyapps.R
+rsconnect
+data/raw_inputs
+data/*.csv
