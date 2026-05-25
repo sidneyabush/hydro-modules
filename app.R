@@ -148,27 +148,6 @@ solute_colors <- c(
   "NO3" = activity3_no3_accent
 )
 
-cq_solute_shade_palettes <- list(
-  Cl = c("#c7a3b6", activity2_cl_accent, "#6e3456"),
-  NO3 = c("#8ca8c4", activity3_no3_accent, "#1e416c")
-)
-
-select_cq_site_colors <- function(solute, n_sites) {
-  palette <- cq_solute_shade_palettes[[solute]]
-  if (is.null(palette) || n_sites <= 0) {
-    return(character(0))
-  }
-
-  palette_indices <- switch(
-    as.character(min(n_sites, 3)),
-    "1" = 2L,
-    "2" = c(1L, 3L),
-    "3" = c(1L, 2L, 3L)
-  )
-
-  palette[palette_indices]
-}
-
 # these get reused in multiple ggplots, so pulling them out here
 base_plot_theme <- theme_minimal(base_family = "Work Sans") +
   theme(
@@ -389,20 +368,18 @@ activity2_map_bounds <- list(
   ymax = 85
 )
 
+activity2_landcover_focus_bounds <- list(
+  xmin = -135,
+  ymin = 15,
+  xmax = -60,
+  ymax = 63
+)
+
 activity2_background_focus_bounds <- list(
+  "none" = activity2_landcover_focus_bounds,
   "map" = activity2_map_bounds,
-  "cropland" = list(
-    xmin = -135,
-    ymin = 15,
-    xmax = -60,
-    ymax = 63
-  ),
-  "impervious" = list(
-    xmin = -135,
-    ymin = 15,
-    xmax = -60,
-    ymax = 63
-  )
+  "cropland" = activity2_landcover_focus_bounds,
+  "impervious" = activity2_landcover_focus_bounds
 )
 
 # load the largest data object once at startup; the rest are read on demand
@@ -452,18 +429,24 @@ activity2_background_rasters_global <- load_activity2_background_rasters(
 )
 
 activity2_background_choices <- setNames(
-  names(activity2_background_specs)[
-    vapply(activity2_background_rasters_global, Negate(is.null), logical(1))
-  ],
-  vapply(
-    activity2_background_specs[
-      names(activity2_background_specs)[
-        vapply(activity2_background_rasters_global, Negate(is.null), logical(1))
-      ]
-    ],
-    `[[`,
-    character(1),
-    "label"
+  c(
+    "none",
+    names(activity2_background_specs)[
+      vapply(activity2_background_rasters_global, Negate(is.null), logical(1))
+    ]
+  ),
+  c(
+    "",
+    vapply(
+      activity2_background_specs[
+        names(activity2_background_specs)[
+          vapply(activity2_background_rasters_global, Negate(is.null), logical(1))
+        ]
+      ],
+      `[[`,
+      character(1),
+      "label"
+    )
   )
 )
 
@@ -917,7 +900,7 @@ ui <- page_navbar(
             "LULC" = "major_land",
             "MAP (mm)" = "mean_annual_precip",
             "MAT (°C)" = "mean_annual_temp",
-            "Mean Annual ET" = "mean_annual_evapotrans",
+            "Mean Annual ET (kg/m²)" = "mean_annual_evapotrans",
             "Snow Cover (%)" = "snow_cover",
             "Mean Peak Snow Cover (%)" = "mean_snow_prop_area",
             "Peak Snow Cover (%)" = "peak_snow_prop_area",
@@ -955,7 +938,7 @@ ui <- page_navbar(
               "<span style='font-weight:700;'>Mean Annual Temperature</span> (MAT, °C): Average yearly temperature across the watershed"
             )),
             tags$li(HTML(
-              "<span style='font-weight:700;'>Mean Annual Evapotranspiration</span>: Average yearly evapotranspiration across the watershed"
+              "<span style='font-weight:700;'>Mean Annual Evapotranspiration</span> (kg/m²): Average yearly evapotranspiration across the watershed"
             )),
             tags$li(HTML(
               "<span style='font-weight:700;'>Snow Cover</span> (%): Average percent of the watershed covered by snow over the full period of record"
@@ -1102,58 +1085,6 @@ ui <- page_navbar(
           )
         ),
         nav_panel(
-          "RCS vs RBI",
-          layout_columns(
-            col_widths = c(8, 4),
-            card(
-              full_screen = TRUE,
-              card_header(
-                "RCS vs RBI Across the Full Site Set"
-              ),
-              tags$p(
-                "Scatterplot of recession curve slope and Richards-Baker flashiness index for all sites.",
-                class = "visually-hidden"
-              ),
-              plotlyOutput("rcs_rbi_plot", height = 700)
-            ),
-            card(
-              card_header("Guide"),
-              tags$div(
-                style = "font-size: 0.88em; line-height: 1.6; padding: 8px;",
-                tags$p(HTML(
-                  "<b>Learning objective:</b> Relate quantitative hydrograph metrics to subsurface storage and streamflow generation processes."
-                )),
-                hr(),
-                tags$p(
-                  style = "color: #444;",
-                  HTML(
-                    "<b>Prompt 1:</b> Describe the relationship between RCS
-                    and RBI across the entire dataset. How do you interpret
-                    that pattern?"
-                  )
-                ),
-                hr(),
-                tags$p(
-                  style = "color: #444;",
-                  HTML(
-                    "<b>Prompt 2:</b> You should see an inverse relationship
-                    between RCS and RBI. Why might flashier basins be expected
-                    to have lower RCS?"
-                  )
-                ),
-                hr(),
-                tags$p(
-                  style = "color: #444;",
-                  HTML(
-                    "<b>Tip:</b> Use the color selector in the sidebar to
-                    compare this pattern by snow cover, MAP, or land use."
-                  )
-                )
-              )
-            )
-          )
-        ),
-        nav_panel(
           "Average Hydrographs",
           layout_columns(
             col_widths = c(8, 4),
@@ -1209,6 +1140,58 @@ ui <- page_navbar(
               )
             )
           )
+        ),
+        nav_panel(
+          "RCS vs RBI",
+          layout_columns(
+            col_widths = c(8, 4),
+            card(
+              full_screen = TRUE,
+              card_header(
+                "RCS vs RBI Across the Full Site Set"
+              ),
+              tags$p(
+                "Scatterplot of recession curve slope and Richards-Baker flashiness index for all sites.",
+                class = "visually-hidden"
+              ),
+              plotlyOutput("rcs_rbi_plot", height = 700)
+            ),
+            card(
+              card_header("Guide"),
+              tags$div(
+                style = "font-size: 0.88em; line-height: 1.6; padding: 8px;",
+                tags$p(HTML(
+                  "<b>Learning objective:</b> Relate quantitative hydrograph metrics to subsurface storage and streamflow generation processes."
+                )),
+                hr(),
+                tags$p(
+                  style = "color: #444;",
+                  HTML(
+                    "<b>Prompt 1:</b> Describe the relationship between RCS
+                    and RBI across the entire dataset. How do you interpret
+                    that pattern?"
+                  )
+                ),
+                hr(),
+                tags$p(
+                  style = "color: #444;",
+                  HTML(
+                    "<b>Prompt 2:</b> You should see an inverse relationship
+                    between RCS and RBI. Why might flashier basins be expected
+                    to have lower RCS?"
+                  )
+                ),
+                hr(),
+                tags$p(
+                  style = "color: #444;",
+                  HTML(
+                    "<b>Tip:</b> Use the color selector in the sidebar to
+                    compare this pattern by snow cover, MAP, or land use."
+                  )
+                )
+              )
+            )
+          )
         )
       )
     )
@@ -1226,16 +1209,12 @@ ui <- page_navbar(
           condition = "input.activity2_tab == 'Chloride Map'",
           selectInput(
             "cl_map_background",
-            "Background raster:",
+            "Background Map:",
             choices = activity2_background_choices,
-            selected = if (length(activity2_background_choices) > 0) {
-              unname(activity2_background_choices[[1]])
-            } else {
-              character(0)
-            }
+            selected = "none"
           ),
           p(
-            "Choose a North America background raster and compare it with the
+            "Choose a North America background map and compare it with the
             mean chloride points plotted on top. Click a site marker for exact
             values.",
             style = "font-size: 0.85em; color: #666;"
@@ -1366,6 +1345,31 @@ ui <- page_navbar(
         width = 300,
         h4("Controls"),
 
+        conditionalPanel(
+          condition = "input.activity3_tab == 'Site Map'",
+          p(
+            "Select a site from the map.",
+            style = "font-size: 0.85em; color: #666;"
+          ),
+          selectInput(
+            "cq_map_color_by",
+            "Color sites by:",
+            choices = c(
+              "Climate Zone" = "Name",
+              "LULC" = "major_land",
+              "MAP (mm)" = "mean_annual_precip",
+              "MAT (°C)" = "mean_annual_temp",
+              "Mean Annual ET (kg/m²)" = "mean_annual_evapotrans",
+              "Snow Cover (%)" = "snow_cover",
+              "Mean Peak Snow Cover (%)" = "mean_snow_prop_area",
+              "Peak Snow Cover (%)" = "peak_snow_prop_area",
+              "RBI" = "RBI",
+              "RCS" = "recession_slope"
+            ),
+            selected = "Name"
+          )
+        ),
+
         # time series controls
         conditionalPanel(
           condition = "input.activity3_tab == 'Average Seasonal Hydrograph'",
@@ -1396,26 +1400,20 @@ ui <- page_navbar(
         conditionalPanel(
           condition = "input.activity3_tab == 'C-Q Relationships'",
           p(
-            "Use the same site first, then add up to two more sites and
-            compare Cl and NO3 C-Q behavior across them.",
+            "Use one site at a time and compare how Cl and NO3 relate to
+            discharge at that site.",
             style = "font-size: 0.85em; color: #666;"
           ),
           selectInput(
             "cq_sites",
-            "Sites (max 3):",
-            choices = NULL,
-            multiple = TRUE
+            "Select a site:",
+            choices = NULL
           ),
           checkboxGroupInput(
             "cq_solutes",
             "Solutes:",
             choices = c("Chloride (Cl)" = "Cl", "Nitrate (NO3)" = "NO3"),
             selected = character(0)
-          ),
-          checkboxInput(
-            "cq_show_trendline",
-            "Show trendlines",
-            value = TRUE
           )
         ),
 
@@ -1437,6 +1435,49 @@ ui <- page_navbar(
 
       navset_card_tab(
         id = "activity3_tab",
+        nav_panel(
+          "Site Map",
+          layout_columns(
+            col_widths = c(8, 4),
+            card(
+              full_screen = TRUE,
+              card_header("Choose a Site from the Map"),
+              tags$p(
+                "Interactive map of Activity 3 sites. Click a site to carry it into the Activity 3 tabs.",
+                class = "visually-hidden"
+              ),
+              tags$div(
+                style = "display: flex; flex-direction: column; gap: 0.35rem;",
+                leafletOutput("cq_site_map", height = 600),
+                uiOutput("cq_map_selected_site_label")
+              )
+            ),
+            card(
+              card_header("Guide"),
+              tags$div(
+                style = "font-size: 0.88em; line-height: 1.6; padding: 8px;",
+                tags$p(HTML(
+                  "<b>Start here:</b> Use the map to choose a site for Activity 3."
+                )),
+                hr(),
+                tags$p(HTML(
+                  "<b>What this does:</b> Clicking a site on the map sets the site used in the Activity 3 tabs."
+                )),
+                hr(),
+                tags$p(
+                  "Use the map coloring to compare climate, land cover, snow, and hydrologic context before moving on."
+                ),
+                hr(),
+                tags$p(
+                  style = "color: #444;",
+                  HTML(
+                    "<b>Next:</b> After choosing a site, open the <em>Average Seasonal Hydrograph</em> tab to inspect discharge and concentration seasonality."
+                  )
+                )
+              )
+            )
+          )
+        ),
         nav_panel(
           "Average Seasonal Hydrograph",
           layout_columns(
@@ -1563,10 +1604,10 @@ ui <- page_navbar(
                   style = "color: #444;",
                   HTML(
                     "<b>Prompts:</b> Describe the relationship between C and Q
-                    for Cl at one site, then compare it with two additional
-                    sites. What does a positive, negative, or flat slope tell
-                    you? Then plot NO<sub>3</sub> for the same sites and
-                    compare the slopes and line fits."
+                    for Cl at one site. What does a positive, negative, or
+                    flat slope tell you? Then plot NO<sub>3</sub> for the
+                    same site and compare the slopes and line fits. Repeat
+                    with another site if you want to compare patterns."
                   )
                 )
               )
@@ -1852,15 +1893,29 @@ server <- function(input, output, session) {
   }
 
   # --- Map -----------------------------------------------------------------
+  activity3_available_sites <- reactive({
+    has_q <- unique(discharge_data()$Stream_ID)
 
-  output$site_map <- renderLeaflet({
-    req(input$map_color_by)
+    cq_paired_data() %>%
+      count(Stream_ID, LTER, Stream_Name, variable, name = "n_paired") %>%
+      group_by(Stream_ID, LTER, Stream_Name) %>%
+      summarise(max_paired = max(n_paired, na.rm = TRUE), .groups = "drop") %>%
+      filter(Stream_ID %in% has_q, max_paired >= 3) %>%
+      select(Stream_ID, LTER, Stream_Name) %>%
+      distinct() %>%
+      arrange(LTER, Stream_Name)
+  })
 
-    map_data <- harmonized_partial() %>%
+  activity3_map_selected_site <- reactiveVal(NULL)
+
+  build_overview_style_map <- function(map_data,
+                                       selected_var,
+                                       clickable = FALSE,
+                                       highlighted_site_id = NULL) {
+    map_data <- map_data %>%
       filter(!is.na(Latitude), !is.na(Longitude)) %>%
       mutate(major_land_display = clean_land_use_label(major_land))
 
-    selected_var <- input$map_color_by
     map_data <- if (selected_var %in% c("major_land", "Name")) {
       map_data %>%
         filter(
@@ -1874,62 +1929,35 @@ server <- function(input, output, session) {
 
     req(nrow(map_data) > 0)
 
-    # use cleaned land-cover labels for display and color matching
-    if (input$map_color_by == "major_land") {
+    if (selected_var == "major_land") {
       map_data <- map_data %>%
         mutate(major_land = major_land_display)
     }
 
-    color_var <- map_data[[input$map_color_by]]
-
-    # show snow-cover metrics as percentages in the overview map
-    if (input$map_color_by %in% c("snow_cover", "mean_snow_prop_area", "peak_snow_prop_area")) {
+    color_var <- map_data[[selected_var]]
+    if (selected_var %in% c("snow_cover", "mean_snow_prop_area", "peak_snow_prop_area")) {
       color_var <- color_var * 100
     }
 
     numeric_legend_specs <- list(
-      "mean_annual_precip" = list(
-        colors = precip_palette,
-        digits = 0
-      ),
-      "mean_annual_temp" = list(
-        colors = rev(RColorBrewer::brewer.pal(9, "RdYlBu")),
-        digits = 1
-      ),
-      "mean_annual_evapotrans" = list(
-        colors = RColorBrewer::brewer.pal(9, "Oranges"),
-        digits = 0
-      ),
-      "snow_cover" = list(
-        colors = precip_palette,
-        digits = 0
-      ),
-      "mean_snow_prop_area" = list(
-        colors = precip_palette,
-        digits = 0
-      ),
-      "peak_snow_prop_area" = list(
-        colors = precip_palette,
-        digits = 0
-      ),
-      "RBI" = list(
-        colors = RColorBrewer::brewer.pal(9, "Greens"),
-        digits = 2
-      ),
-      "recession_slope" = list(
-        colors = RColorBrewer::brewer.pal(9, "Greens"),
-        digits = 2
-      )
+      "mean_annual_precip" = list(colors = precip_palette, digits = 0),
+      "mean_annual_temp" = list(colors = rev(RColorBrewer::brewer.pal(9, "RdYlBu")), digits = 1),
+      "mean_annual_evapotrans" = list(colors = RColorBrewer::brewer.pal(9, "Oranges"), digits = 0),
+      "snow_cover" = list(colors = precip_palette, digits = 0),
+      "mean_snow_prop_area" = list(colors = precip_palette, digits = 0),
+      "peak_snow_prop_area" = list(colors = precip_palette, digits = 0),
+      "RBI" = list(colors = RColorBrewer::brewer.pal(9, "Greens"), digits = 2),
+      "recession_slope" = list(colors = RColorBrewer::brewer.pal(9, "Greens"), digits = 2)
     )
-    is_numeric_map_var <- input$map_color_by %in% names(numeric_legend_specs)
-    numeric_spec <- if (is_numeric_map_var) numeric_legend_specs[[input$map_color_by]] else NULL
+    is_numeric_map_var <- selected_var %in% names(numeric_legend_specs)
+    numeric_spec <- if (is_numeric_map_var) numeric_legend_specs[[selected_var]] else NULL
 
     legend_titles <- c(
       "Name" = "Climate Zone",
       "snow_cover" = "Snow Cover (%)",
       "mean_annual_precip" = "MAP (mm)",
       "mean_annual_temp" = "MAT (°C)",
-      "mean_annual_evapotrans" = "Mean Annual ET",
+      "mean_annual_evapotrans" = "Mean Annual ET (kg/m²)",
       "mean_snow_prop_area" = "Mean Peak Snow Cover (%)",
       "peak_snow_prop_area" = "Peak Snow Cover (%)",
       "RBI" = "RBI",
@@ -1937,114 +1965,45 @@ server <- function(input, output, session) {
       "major_land" = "LULC"
     )
     legend_title <- switch(
-      input$map_color_by,
+      selected_var,
       "mean_snow_prop_area" = HTML("Mean Peak<br>Snow Cover (%)"),
       "peak_snow_prop_area" = HTML("Peak Snow<br>Cover (%)"),
-      legend_titles[[input$map_color_by]]
+      legend_titles[[selected_var]]
     )
 
-    # 20 high-contrast colors for categorical variables
     distinct_colors <- c(
-      "#e41a1c",
-      "#377eb8",
-      "#4daf4a",
-      "#984ea3",
-      "#ff7f00",
-      "#ffff33",
-      "#a65628",
-      "#f781bf",
-      "#66c2a5",
-      "#fc8d62",
-      "#8da0cb",
-      "#e78ac3",
-      "#a6d854",
-      "#ffd92f",
-      "#e5c494",
-      "#b3b3b3",
-      "#1b9e77",
-      "#d95f02",
-      "#7570b3",
-      "#e7298a"
+      "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00",
+      "#ffff33", "#a65628", "#f781bf", "#66c2a5", "#fc8d62",
+      "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494",
+      "#b3b3b3", "#1b9e77", "#d95f02", "#7570b3", "#e7298a"
     )
 
-    # Choose color palette based on variable type
     pal <- switch(
-      input$map_color_by,
-
-      # Numeric variables
-      "mean_annual_precip" = colorNumeric(
-        numeric_legend_specs[["mean_annual_precip"]]$colors,
-        domain = color_var
-      ),
-      "mean_annual_temp" = colorNumeric(
-        numeric_legend_specs[["mean_annual_temp"]]$colors,
-        domain = color_var
-      ),
-      "mean_annual_evapotrans" = colorNumeric(
-        numeric_legend_specs[["mean_annual_evapotrans"]]$colors,
-        domain = color_var
-      ),
-      "snow_cover" = colorNumeric(
-        numeric_legend_specs[["snow_cover"]]$colors,
-        domain = color_var
-      ),
-      "mean_snow_prop_area" = colorNumeric(
-        numeric_legend_specs[["mean_snow_prop_area"]]$colors,
-        domain = color_var
-      ),
-      "peak_snow_prop_area" = colorNumeric(
-        numeric_legend_specs[["peak_snow_prop_area"]]$colors,
-        domain = color_var
-      ),
-      "RBI" = colorNumeric(
-        numeric_legend_specs[["RBI"]]$colors,
-        domain = color_var
-      ),
-      "recession_slope" = colorNumeric(
-        numeric_legend_specs[["recession_slope"]]$colors,
-        domain = color_var
-      ),
-
-      # Qualitative variables
+      selected_var,
+      "mean_annual_precip" = colorNumeric(numeric_legend_specs[["mean_annual_precip"]]$colors, domain = color_var),
+      "mean_annual_temp" = colorNumeric(numeric_legend_specs[["mean_annual_temp"]]$colors, domain = color_var),
+      "mean_annual_evapotrans" = colorNumeric(numeric_legend_specs[["mean_annual_evapotrans"]]$colors, domain = color_var),
+      "snow_cover" = colorNumeric(numeric_legend_specs[["snow_cover"]]$colors, domain = color_var),
+      "mean_snow_prop_area" = colorNumeric(numeric_legend_specs[["mean_snow_prop_area"]]$colors, domain = color_var),
+      "peak_snow_prop_area" = colorNumeric(numeric_legend_specs[["peak_snow_prop_area"]]$colors, domain = color_var),
+      "RBI" = colorNumeric(numeric_legend_specs[["RBI"]]$colors, domain = color_var),
+      "recession_slope" = colorNumeric(numeric_legend_specs[["recession_slope"]]$colors, domain = color_var),
       "Name" = function(values) {
-        named_color_lookup(
-          values,
-          palette = climate_zone_colors,
-          default = "#b9c7d3"
-        )
+        named_color_lookup(values, palette = climate_zone_colors, default = "#b9c7d3")
       },
       "major_land" = function(values) {
-        named_color_lookup(
-          values,
-          palette = land_use_colors,
-          default = land_use_colors[["Other / Unclassified"]]
-        )
+        named_color_lookup(values, palette = land_use_colors, default = land_use_colors[["Other / Unclassified"]])
       },
-
-      # Default fallback for any remaining categorical variables
-      {
-        colorFactor(
-          palette = rep(
-            distinct_colors,
-            length.out = length(unique(color_var))
-          ),
-          domain = color_var
-        )
-      }
+      colorFactor(
+        palette = rep(distinct_colors, length.out = length(unique(color_var))),
+        domain = color_var
+      )
     )
 
-    map_fill_color <- if (input$map_color_by == "major_land") {
-      named_color_lookup(
-        color_var,
-        palette = land_use_colors,
-        default = land_use_colors[["Other / Unclassified"]]
-      )
-    } else if (input$map_color_by == "Name") {
-      named_color_lookup(
-        color_var,
-        palette = climate_zone_colors,
-        default = "#b9c7d3"
-      )
+    map_fill_color <- if (selected_var == "major_land") {
+      named_color_lookup(color_var, palette = land_use_colors, default = land_use_colors[["Other / Unclassified"]])
+    } else if (selected_var == "Name") {
+      named_color_lookup(color_var, palette = climate_zone_colors, default = "#b9c7d3")
     } else {
       unname(pal(color_var))
     }
@@ -2053,42 +2012,18 @@ server <- function(input, output, session) {
       mutate(
         map_fill_color = map_fill_color,
         popup_html = paste0(
-          "<b>",
-          Stream_Name,
-          "</b><br>",
-          "LTER: ",
-          LTER,
-          "<br>",
-          "LULC: ",
-          major_land_display,
-          "<br>",
-          "RBI: ",
-          round(RBI, 3),
-          "<br>",
-          "RCS: ",
-          round(recession_slope, 3),
-          "<br>",
-          "Climate: ",
-          Name,
-          "<br>",
-          "Snow Cover: ",
-          round(snow_cover * 100, 0),
-          "%<br>",
-          "Mean Peak Snow Cover: ",
-          round(mean_snow_prop_area * 100, 0),
-          "%<br>",
-          "Peak Snow Cover: ",
-          round(peak_snow_prop_area * 100, 0),
-          "%<br>",
-          "Mean Annual Precip: ",
-          round(mean_annual_precip, 1),
-          " mm<br>",
-          "MAT: ",
-          round(mean_annual_temp, 1),
-          " °C<br>",
-          "Mean Annual ET: ",
-          round(mean_annual_evapotrans, 1),
-          " kg/m2"
+          "<b>", Stream_Name, "</b><br>",
+          "LTER: ", LTER, "<br>",
+          "LULC: ", major_land_display, "<br>",
+          "RBI: ", round(RBI, 3), "<br>",
+          "RCS: ", round(recession_slope, 3), "<br>",
+          "Climate: ", Name, "<br>",
+          "Snow Cover: ", round(snow_cover * 100, 0), "%<br>",
+          "Mean Peak Snow Cover: ", round(mean_snow_prop_area * 100, 0), "%<br>",
+          "Peak Snow Cover: ", round(peak_snow_prop_area * 100, 0), "%<br>",
+          "Mean Annual Precip: ", round(mean_annual_precip, 1), " mm<br>",
+          "MAT: ", round(mean_annual_temp, 1), " °C<br>",
+          "Mean Annual ET: ", round(mean_annual_evapotrans, 1), " kg/m²"
         )
       )
 
@@ -2101,7 +2036,7 @@ server <- function(input, output, session) {
         preferCanvas = TRUE,
         worldCopyJump = FALSE
       )
-      ) %>%
+    ) %>%
       addProviderTiles(
         providers$CartoDB.PositronNoLabels,
         options = tileOptions(opacity = 0.9)
@@ -2113,25 +2048,15 @@ server <- function(input, output, session) {
       fitBounds(lng_bounds[1], lat_bounds[1], lng_bounds[2], lat_bounds[2]) %>%
       addScaleBar(position = "bottomright", options = scaleBarOptions(imperial = FALSE))
 
-    if (input$map_color_by %in% c("major_land", "Name")) {
-      class_palette <- if (input$map_color_by == "major_land") {
-        land_use_colors
-      } else {
-        climate_zone_colors
-      }
-      class_var <- if (input$map_color_by == "major_land") {
-        "major_land"
-      } else {
-        "Name"
-      }
+    if (selected_var %in% c("major_land", "Name")) {
+      class_palette <- if (selected_var == "major_land") land_use_colors else climate_zone_colors
+      class_var <- if (selected_var == "major_land") "major_land" else "Name"
       class_levels <- names(class_palette)[
         names(class_palette) %in% unique(as.character(map_data[[class_var]]))
       ]
 
       for (class_label in class_levels) {
-        class_data <- map_data %>%
-          filter(.data[[class_var]] == class_label)
-
+        class_data <- map_data %>% filter(.data[[class_var]] == class_label)
         if (nrow(class_data) == 0) {
           next
         }
@@ -2139,40 +2064,68 @@ server <- function(input, output, session) {
         class_color <- unname(class_palette[[class_label]])
         class_fill_opacity <- if (identical(class_label, "Bare")) 0.94 else 0.78
 
-        m <- m %>%
-          addCircleMarkers(
-            data = class_data,
-            lng = ~Longitude,
-            lat = ~Latitude,
-            radius = 6.5,
-            stroke = TRUE,
-            fill = TRUE,
-            fillColor = class_color,
-            color = "#7f878d",
-            weight = 0.9,
-            opacity = 0.85,
-            fillOpacity = class_fill_opacity,
-            popup = ~popup_html,
-            label = ~Stream_Name,
-            group = class_label
-          )
-      }
-    } else {
-      m <- m %>%
-        addCircleMarkers(
-          data = map_data,
+        marker_args <- list(
+          data = class_data,
           lng = ~Longitude,
           lat = ~Latitude,
           radius = 6.5,
           stroke = TRUE,
           fill = TRUE,
-          fillColor = ~map_fill_color,
+          fillColor = class_color,
           color = "#7f878d",
           weight = 0.9,
           opacity = 0.85,
-          fillOpacity = 0.78,
+          fillOpacity = class_fill_opacity,
           popup = ~popup_html,
-          label = ~Stream_Name
+          label = ~Stream_Name,
+          group = class_label
+        )
+        if (isTRUE(clickable)) {
+          marker_args$layerId <- class_data$Stream_ID
+        }
+
+        m <- do.call(addCircleMarkers, c(list(map = m), marker_args))
+      }
+    } else {
+      marker_args <- list(
+        map = m,
+        data = map_data,
+        lng = ~Longitude,
+        lat = ~Latitude,
+        radius = 6.5,
+        stroke = TRUE,
+        fill = TRUE,
+        fillColor = ~map_fill_color,
+        color = "#7f878d",
+        weight = 0.9,
+        opacity = 0.85,
+        fillOpacity = 0.78,
+        popup = ~popup_html,
+        label = ~Stream_Name
+      )
+      if (isTRUE(clickable)) {
+        marker_args$layerId <- ~Stream_ID
+      }
+
+      m <- do.call(addCircleMarkers, marker_args)
+    }
+
+    if (!is.null(highlighted_site_id) && highlighted_site_id %in% map_data$Stream_ID) {
+      selected_point <- map_data %>%
+        filter(Stream_ID == highlighted_site_id) %>%
+        slice(1)
+
+      m <- m %>%
+        addCircleMarkers(
+          data = selected_point,
+          lng = ~Longitude,
+          lat = ~Latitude,
+          radius = 10,
+          stroke = TRUE,
+          fill = FALSE,
+          color = "#24323d",
+          weight = 3.2,
+          opacity = 0.96
         )
     }
 
@@ -2188,16 +2141,16 @@ server <- function(input, output, session) {
           position = "bottomleft"
         )
     } else {
-      legend_levels <- if (input$map_color_by == "major_land") {
+      legend_levels <- if (selected_var == "major_land") {
         land_use_legend_levels(color_var)
-      } else if (input$map_color_by == "Name") {
+      } else if (selected_var == "Name") {
         names(climate_zone_colors)[
           names(climate_zone_colors) %in% unique(as.character(color_var))
         ]
       } else {
         sort(unique(as.character(color_var)))
       }
-      legend_items <- if (input$map_color_by == "major_land") {
+      legend_items <- if (selected_var == "major_land") {
         setNames(
           named_color_lookup(
             legend_levels,
@@ -2206,16 +2159,10 @@ server <- function(input, output, session) {
           ),
           legend_levels
         )
-      } else if (input$map_color_by == "Name") {
-        setNames(
-          unname(climate_zone_colors[legend_levels]),
-          legend_levels
-        )
+      } else if (selected_var == "Name") {
+        setNames(unname(climate_zone_colors[legend_levels]), legend_levels)
       } else {
-        setNames(
-          unname(pal(legend_levels)),
-          legend_levels
-        )
+        setNames(unname(pal(legend_levels)), legend_levels)
       }
 
       m %>%
@@ -2223,12 +2170,12 @@ server <- function(input, output, session) {
           html = build_categorical_legend(
             title = legend_title,
             legend_items = legend_items,
-            label_overrides = if (input$map_color_by == "major_land") {
+            label_overrides = if (selected_var == "major_land") {
               c("Grassland / Shrubland" = "Grassland\u00A0/\u00A0Shrubland")
             } else {
               NULL
             },
-            extra_class = if (input$map_color_by == "major_land") {
+            extra_class = if (selected_var == "major_land") {
               "custom-legend-wide"
             } else {
               NULL
@@ -2237,6 +2184,73 @@ server <- function(input, output, session) {
           position = "bottomleft"
         )
     }
+  }
+
+  output$site_map <- renderLeaflet({
+    req(input$map_color_by)
+    build_overview_style_map(
+      map_data = harmonized_partial(),
+      selected_var = input$map_color_by
+    )
+  })
+
+  output$cq_site_map <- renderLeaflet({
+    req(input$cq_map_color_by)
+
+    map_site_ids <- activity3_available_sites()$Stream_ID
+    map_data <- harmonized_partial() %>%
+      filter(Stream_ID %in% map_site_ids)
+
+    build_overview_style_map(
+      map_data = map_data,
+      selected_var = input$cq_map_color_by,
+      clickable = TRUE,
+      highlighted_site_id = activity3_map_selected_site()
+    )
+  })
+
+  observeEvent(input$cq_site_map_marker_click, {
+    click <- input$cq_site_map_marker_click
+    req(click$id)
+    activity3_map_selected_site(click$id)
+    updateSelectInput(session, "cq_ts_site", selected = click$id)
+    updateSelectInput(session, "cq_sites", selected = click$id)
+  })
+
+  output$cq_map_selected_site_label <- renderUI({
+    selected_id <- activity3_map_selected_site()
+
+    if (is.null(selected_id) || !nzchar(selected_id)) {
+      return(
+        tags$div(
+          style = "padding: 0 10px 10px 10px; font-size: 0.84rem; color: #5d6d76;",
+          "Click a site on the map to select it."
+        )
+      )
+    }
+
+    selected_site <- harmonized_partial() %>%
+      filter(Stream_ID == selected_id) %>%
+      select(Stream_Name, LTER) %>%
+      distinct() %>%
+      slice(1)
+
+    if (nrow(selected_site) == 0) {
+      return(NULL)
+    }
+
+    tags$div(
+      style = "padding: 0 10px 10px 10px; font-size: 0.84rem; color: #31424c;",
+      HTML(
+        paste0(
+          "<b>Selected from map:</b> ",
+          selected_site$Stream_Name,
+          " [",
+          selected_site$LTER,
+          "]"
+        )
+      )
+    )
   })
 
   # --- Activity 1: Hydroclimate selector -----------------------------------
@@ -2306,34 +2320,37 @@ server <- function(input, output, session) {
       "RCS: ", round(plot_data$recession_slope, 3)
     )
 
+    selector_label_x <- max(plot_data$mean_annual_precip, na.rm = TRUE) * 0.98
+
     p <- ggplot(
       plot_data,
       aes(
         x = mean_annual_precip,
         y = snow_cover,
-        fill = mean_snow_prop_area,
         text = hover_text,
         key = Stream_ID
       )
     ) +
+      geom_hline(
+        yintercept = 0.25,
+        color = "#5d6d76",
+        linewidth = 0.45,
+        linetype = "dashed"
+      ) +
       geom_point(
         shape = 21,
         color = "#7f878d",
+        fill = module_colors[["secondary"]],
         size = 3.3,
-        stroke = 0.3,
+        stroke = 0.28,
         alpha = 0.8
       ) +
       labs(
         x = "Mean Annual Precipitation (mm/yr)",
-        y = "Average Snow Cover (%)",
-        fill = "Mean Peak\nSnow Cover (%)"
+        y = "Average Snow Cover (%)"
       ) +
       base_plot_theme +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-      scale_fill_gradientn(
-        colours = precip_palette,
-        labels = scales::percent_format(accuracy = 1)
-      )
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1))
 
     if (any(plot_data$is_highlighted)) {
       highlighted <- filter(plot_data, is_highlighted)
@@ -2342,13 +2359,13 @@ server <- function(input, output, session) {
           data = highlighted,
           aes(
             x = mean_annual_precip,
-            y = snow_cover,
-            fill = mean_snow_prop_area
+            y = snow_cover
           ),
           shape = 21,
           color = "#7f878d",
+          fill = module_colors[["primary"]],
           size = 5.2,
-          stroke = 0.45,
+          stroke = 0.4,
           alpha = 1,
           show.legend = FALSE,
           inherit.aes = FALSE
@@ -2372,8 +2389,24 @@ server <- function(input, output, session) {
       layout(
         paper_bgcolor = plotly_bg$paper_bgcolor,
         plot_bgcolor = plotly_bg$plot_bgcolor,
-        legend = right_side_legend(font_size = 10),
-        margin = list(r = 160),
+        showlegend = FALSE,
+        margin = list(r = 40),
+        annotations = list(
+          list(
+            x = selector_label_x,
+            y = 0.25,
+            text = "25% snow cover",
+            showarrow = FALSE,
+            xanchor = "right",
+            yanchor = "bottom",
+            yshift = 4,
+            font = list(size = 11, color = "#5d6d76"),
+            bgcolor = "rgba(255,255,255,0.78)",
+            bordercolor = "rgba(93,109,118,0.18)",
+            borderwidth = 1,
+            borderpad = 3
+          )
+        ),
         title = FALSE
       ) %>%
       polish_plotly(register_click = TRUE)
@@ -2445,7 +2478,7 @@ server <- function(input, output, session) {
         paper_bgcolor = plotly_bg$paper_bgcolor,
         plot_bgcolor = plotly_bg$plot_bgcolor,
         xaxis = list(
-          title = NULL,
+          title = "Month",
           tickmode = "array",
           tickvals = 1:12,
           ticktext = month_labels,
@@ -2812,7 +2845,7 @@ server <- function(input, output, session) {
           marker = list(
             color = clr,
             size = 14,
-            line = list(color = "#7f878d", width = 0.9)
+            line = list(color = "#7f878d", width = 0.75)
           ),
           name = site_label,
           hovertemplate = paste0(
@@ -2966,7 +2999,7 @@ server <- function(input, output, session) {
         shape = 21,
         color = "#7f878d",
         size = 3,
-        stroke = 0.3,
+        stroke = 0.28,
         alpha = 0.78
       ) +
       labs(
@@ -3050,7 +3083,7 @@ server <- function(input, output, session) {
           shape = 21,
           color = "#7f878d",
           size = 5,
-          stroke = 0.45,
+          stroke = 0.4,
           alpha = 1,
           show.legend = FALSE,
           inherit.aes = FALSE
@@ -3117,7 +3150,7 @@ server <- function(input, output, session) {
 
     background_key <- input$cl_map_background
     if (is.null(background_key) || !background_key %in% names(activity2_background_focus_bounds)) {
-      background_key <- "map"
+      background_key <- "none"
     }
 
     bounds <- activity2_background_focus_bounds[[background_key]]
@@ -3148,10 +3181,10 @@ server <- function(input, output, session) {
         options = tileOptions(opacity = 0.68)
       ) %>%
       fitBounds(
-        activity2_map_bounds$xmin,
-        activity2_map_bounds$ymin,
-        activity2_map_bounds$xmax,
-        activity2_map_bounds$ymax
+        activity2_landcover_focus_bounds$xmin,
+        activity2_landcover_focus_bounds$ymin,
+        activity2_landcover_focus_bounds$xmax,
+        activity2_landcover_focus_bounds$ymax
       ) %>%
       addScaleBar(position = "topleft", options = scaleBarOptions(imperial = FALSE))
   })
@@ -3166,30 +3199,49 @@ server <- function(input, output, session) {
     available_backgrounds <- names(activity2_background_rasters_global)[
       vapply(activity2_background_rasters_global, Negate(is.null), logical(1))
     ]
-    req(length(available_backgrounds) > 0)
 
     background_key <- input$cl_map_background
-    if (is.null(background_key) || !background_key %in% available_backgrounds) {
-      background_key <- available_backgrounds[[1]]
+    valid_background_keys <- c("none", available_backgrounds)
+    if (is.null(background_key) || !background_key %in% valid_background_keys) {
+      background_key <- "none"
     }
 
-    background_spec <- activity2_background_specs[[background_key]]
-    background_raster <- activity2_background_rasters_global[[background_key]]
-    req(!is.null(background_raster))
+    has_background <- background_key %in% available_backgrounds
+    background_spec <- NULL
+    display_background_raster <- NULL
+    background_pal <- NULL
+    background_opacity <- NULL
 
-    display_background_raster <- background_raster
-    if (identical(background_key, "cropland")) {
-      display_background_raster <- terra::ifel(
-        background_raster <= 0.5,
-        NA,
-        background_raster
+    if (has_background) {
+      background_spec <- activity2_background_specs[[background_key]]
+      background_raster <- activity2_background_rasters_global[[background_key]]
+      req(!is.null(background_raster))
+
+      display_background_raster <- background_raster
+      if (identical(background_key, "cropland")) {
+        display_background_raster <- terra::ifel(
+          background_raster <= 0.5,
+          NA,
+          background_raster
+        )
+      } else if (identical(background_key, "impervious")) {
+        display_background_raster <- terra::ifel(
+          background_raster <= 0.1,
+          NA,
+          background_raster
+        )
+      }
+
+      background_vals <- terra::values(display_background_raster, mat = FALSE)
+      background_vals <- background_vals[is.finite(background_vals)]
+      background_pal <- colorBin(
+        palette = background_spec$colors,
+        domain = background_vals,
+        bins = background_spec$breaks,
+        na.color = "transparent",
+        right = FALSE
       )
-    } else if (identical(background_key, "impervious")) {
-      display_background_raster <- terra::ifel(
-        background_raster <= 0.1,
-        NA,
-        background_raster
-      )
+      background_opacity <- if (identical(background_key, "map")) 0.84 else 0.72
     }
 
     cl_point_palette <- c(
@@ -3218,39 +3270,44 @@ server <- function(input, output, session) {
     cl_legend_title <- "Mean Cl (mg/L)"
     cl_legend_values <- c(0, linear_cl_values)
 
-    background_vals <- terra::values(display_background_raster, mat = FALSE)
-    background_vals <- background_vals[is.finite(background_vals)]
-    background_pal <- colorBin(
-      palette = background_spec$colors,
-      domain = background_vals,
-      bins = background_spec$breaks,
-      na.color = "transparent",
-      right = FALSE
-    )
-    background_opacity <- if (identical(background_key, "map")) 0.84 else 0.72
-
-    leafletProxy("cl_map", data = marker_data) %>%
+    map_proxy <- leafletProxy("cl_map", data = marker_data) %>%
       clearImages() %>%
       clearMarkers() %>%
-      clearControls() %>%
-      addRasterImage(
-        display_background_raster,
-        colors = background_pal,
-        opacity = background_opacity,
-        project = TRUE,
-        method = "bilinear",
-        maxBytes = 40 * 1024 * 1024
-      ) %>%
+      clearControls()
+
+    if (has_background) {
+      map_proxy <- map_proxy %>%
+        addRasterImage(
+          display_background_raster,
+          colors = background_pal,
+          opacity = background_opacity,
+          project = TRUE,
+          method = "bilinear",
+          maxBytes = 40 * 1024 * 1024
+        ) %>%
+        addControl(
+          html = build_categorical_legend(
+            title = background_spec$label,
+            legend_items = setNames(
+              rev(background_spec$colors),
+              rev(background_spec$labels)
+            )
+          ),
+          position = "bottomleft"
+        )
+    }
+
+    map_proxy %>%
       addScaleBar(position = "topleft", options = scaleBarOptions(imperial = FALSE)) %>%
       addCircleMarkers(
         lng = ~Longitude,
         lat = ~Latitude,
         radius = 6.5,
         fillColor = ~cl_pal(mean_Cl_color_value),
-        color = "#f8fbfc",
-        weight = 1.15,
-        opacity = 0.84,
-        fillOpacity = 0.76,
+        color = "#7f878d",
+        weight = 0.9,
+        opacity = 0.85,
+        fillOpacity = 0.78,
         layerId = ~Stream_ID,
         popup = ~ paste0(
           "<b>",
@@ -3260,16 +3317,6 @@ server <- function(input, output, session) {
           round(mean_Cl_mgL, 1),
           " mg/L"
         )
-      ) %>%
-      addControl(
-        html = build_categorical_legend(
-          title = background_spec$label,
-          legend_items = setNames(
-            rev(background_spec$colors),
-            rev(background_spec$labels)
-          )
-        ),
-        position = "bottomleft"
       ) %>%
       addControl(
         html = build_numeric_legend(
@@ -3494,18 +3541,7 @@ server <- function(input, output, session) {
 
   # populate site dropdown — only sites that have C-Q slopes AND discharge data
   observe({
-    has_q <- unique(discharge_data()$Stream_ID)
-    eligible_sites <- cq_paired_data() %>%
-      count(Stream_ID, LTER, Stream_Name, variable, name = "n_paired") %>%
-      group_by(Stream_ID, LTER, Stream_Name) %>%
-      summarise(max_paired = max(n_paired, na.rm = TRUE), .groups = "drop")
-
-    sites <- eligible_sites %>%
-      filter(Stream_ID %in% has_q) %>%
-      filter(max_paired >= 3) %>%
-      select(Stream_ID, LTER, Stream_Name) %>%
-      distinct() %>%
-      arrange(LTER, Stream_Name)
+    sites <- activity3_available_sites()
     choices <- setNames(
       sites$Stream_ID,
       paste0(sites$Stream_Name, " [", sites$LTER, "]")
@@ -3525,38 +3561,6 @@ server <- function(input, output, session) {
       selected = character(0)
     )
   })
-
-  # enforce max 3 sites
-  observe({
-    if (length(input$cq_sites) > 3) {
-      updateSelectInput(session, "cq_sites", selected = input$cq_sites[1:3])
-    }
-  })
-
-  cq_site_symbols <- c(
-    "circle-open",
-    "x-thin",
-    "triangle-up",
-    "square-open"
-  )
-  cq_site_symbol_labels <- c(
-    "circle-open" = "Open Circle",
-    "x-thin" = "X",
-    "triangle-up" = "Triangle",
-    "square-open" = "Open Square"
-  )
-  cq_site_symbol_glyphs <- c(
-    "circle-open" = "○",
-    "x-thin" = "×",
-    "triangle-up" = "▲",
-    "square-open" = "□"
-  )
-  cq_site_dashes <- c(
-    "solid",
-    "dash",
-    "dot",
-    "longdash"
-  )
 
   # --- C-Q Monthly Hydrograph -------------------------------------------------
 
@@ -3774,26 +3778,16 @@ server <- function(input, output, session) {
     req(input$cq_sites, input$cq_solutes)
 
     paired <- cq_paired_data() %>%
-      filter(Stream_ID %in% input$cq_sites, variable %in% input$cq_solutes)
+      filter(Stream_ID == input$cq_sites, variable %in% input$cq_solutes)
 
-    if (!isTRUE(input$cq_show_trendline) || nrow(paired) == 0) {
+    if (nrow(paired) == 0) {
       return(NULL)
     }
-
-    selected_site_ids <- input$cq_sites
-    site_symbol_map <- setNames(
-      cq_site_symbols[seq_len(length(selected_site_ids))],
-      selected_site_ids
-    )
-    solute_site_color_maps <- lapply(names(cq_solute_shade_palettes), function(sol) {
-      setNames(select_cq_site_colors(sol, length(selected_site_ids)), selected_site_ids)
-    })
-    names(solute_site_color_maps) <- names(cq_solute_shade_palettes)
 
     paired %>%
       group_by(Stream_ID, Stream_Name, LTER, variable) %>%
       group_modify(~ {
-        if (nrow(.x) < 10) {
+        if (nrow(.x) < 3) {
           return(data.frame(
             n_obs = nrow(.x),
             intercept = NA_real_,
@@ -3813,19 +3807,9 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(
         solute_label = names(cq_solute_choices)[match(variable, cq_solute_choices)],
-        solute_color = mapply(
-          function(variable, Stream_ID) {
-            unname(solute_site_color_maps[[variable]][[Stream_ID]])
-          },
-          variable,
-          Stream_ID
-        ),
-        site_symbol = site_symbol_map[Stream_ID],
-        site_symbol_label = cq_site_symbol_labels[site_symbol],
-        site_symbol_glyph = cq_site_symbol_glyphs[site_symbol],
-        site_order = match(Stream_ID, selected_site_ids)
+        solute_color = unname(solute_colors[variable])
       ) %>%
-      arrange(site_order, variable)
+      arrange(variable)
   })
 
   # --- C-Q Scatter Plot -------------------------------------------------------
@@ -3834,7 +3818,7 @@ server <- function(input, output, session) {
     req(input$cq_sites, input$cq_solutes)
 
     paired <- cq_paired_data() %>%
-      filter(Stream_ID %in% input$cq_sites, variable %in% input$cq_solutes)
+      filter(Stream_ID == input$cq_sites, variable %in% input$cq_solutes)
 
     if (nrow(paired) == 0) {
       return(
@@ -3848,24 +3832,11 @@ server <- function(input, output, session) {
       )
     }
 
-    # build one trace per site×solute combo
     combos <- paired %>%
       select(Stream_ID, Stream_Name, LTER, variable) %>%
-      distinct()
-
-    selected_site_ids <- input$cq_sites
-    site_symbol_map <- setNames(
-      cq_site_symbols[seq_len(length(selected_site_ids))],
-      selected_site_ids
-    )
-    site_dash_map <- setNames(
-      cq_site_dashes[seq_len(length(selected_site_ids))],
-      selected_site_ids
-    )
-    solute_site_color_maps <- lapply(names(cq_solute_shade_palettes), function(sol) {
-      setNames(select_cq_site_colors(sol, length(selected_site_ids)), selected_site_ids)
-    })
-    names(solute_site_color_maps) <- names(cq_solute_shade_palettes)
+      distinct() %>%
+      mutate(solute_order = match(variable, input$cq_solutes)) %>%
+      arrange(solute_order)
 
     p <- plot_ly()
 
@@ -3878,12 +3849,7 @@ server <- function(input, output, session) {
         cq_solute_choices == row$variable
       ]
       trace_name <- paste0(row$Stream_Name, " — ", solute_label)
-      clr <- unname(solute_site_color_maps[[row$variable]][[row$Stream_ID]])
-      symbol <- unname(site_symbol_map[[row$Stream_ID]])
-      dash <- unname(site_dash_map[[row$Stream_ID]])
-      symbol_size <- if (identical(symbol, "x-thin")) 9.2 else 9.5
-      symbol_line_width <- if (identical(symbol, "x-thin")) 1.2 else 1.1
-      symbol_opacity <- if (identical(symbol, "x-thin")) 1 else 0.85
+      clr <- unname(solute_colors[[row$variable]])
 
       p <- p %>%
         add_trace(
@@ -3895,10 +3861,10 @@ server <- function(input, output, session) {
           name = trace_name,
           marker = list(
             color = clr,
-            size = symbol_size,
-            opacity = symbol_opacity,
-            symbol = symbol,
-            line = list(color = clr, width = symbol_line_width)
+            size = 9.4,
+            opacity = 0.88,
+            symbol = "circle",
+            line = list(color = clr, width = 1)
           ),
           hovertemplate = paste0(
             row$Stream_Name,
@@ -3914,8 +3880,7 @@ server <- function(input, output, session) {
           showlegend = FALSE
         )
 
-      # optional trendline + annotation
-      if (isTRUE(input$cq_show_trendline) && nrow(d) >= 10) {
+      if (nrow(d) >= 3) {
         mod <- lm(log10(value) ~ log10(Q), data = d)
 
         x_range <- range(log10(d$Q))
@@ -3929,7 +3894,7 @@ server <- function(input, output, session) {
             type = "scatter",
             mode = "lines",
             name = paste0(trace_name, " fit"),
-            line = list(color = clr, width = 2.5, dash = dash),
+            line = list(color = clr, width = 2.5),
             hoverinfo = "skip",
             showlegend = FALSE
           )
@@ -3957,114 +3922,61 @@ server <- function(input, output, session) {
   output$cq_scatter_legend <- renderUI({
     req(input$cq_sites, input$cq_solutes)
 
-    selected_site_ids <- input$cq_sites
-    selected_site_count <- length(selected_site_ids)
-    site_symbol_map <- setNames(
-      cq_site_symbols[seq_len(length(selected_site_ids))],
-      selected_site_ids
-    )
-    solute_site_color_maps <- lapply(input$cq_solutes, function(sol) {
-      setNames(select_cq_site_colors(sol, selected_site_count), selected_site_ids)
-    })
-    names(solute_site_color_maps) <- input$cq_solutes
-
-    selected_sites <- cq_slopes_data() %>%
-      filter(Stream_ID %in% selected_site_ids) %>%
+    selected_site <- cq_slopes_data() %>%
+      filter(Stream_ID == input$cq_sites) %>%
       select(Stream_ID, Stream_Name) %>%
-      distinct() %>%
-      mutate(site_order = match(Stream_ID, selected_site_ids)) %>%
-      arrange(site_order)
+      distinct()
 
-    selected_solutes <- input$cq_solutes
+    if (nrow(selected_site) == 0) {
+      return(NULL)
+    }
+
+    legend_entries <- lapply(input$cq_solutes, function(sol) {
+      solute_label <- names(cq_solute_choices)[cq_solute_choices == sol]
+      clr <- unname(solute_colors[[sol]])
+
+      tags$div(
+        style = "display: flex; align-items: center; gap: 10px;",
+        tags$span(
+          style = "display: inline-flex; align-items: center; width: 34px; position: relative;",
+          tags$span(
+            style = paste0(
+              "display: block; width: 28px; border-top: 3px solid ",
+              clr,
+              ";"
+            )
+          ),
+          tags$span(
+            style = paste0(
+              "position: absolute; left: 9px; top: -4px;",
+              "width: 10px; height: 10px; border-radius: 50%;",
+              "background: ", clr, ";"
+            )
+          )
+        ),
+        tags$span(
+          style = "font-size: 0.84rem; color: #31424c;",
+          solute_label
+        )
+      )
+    })
 
     tags$div(
       style = paste(
-        "overflow-x: auto;",
-        "border: 1px solid #d7e3ea;",
-        "border-radius: 12px;",
-        "background: rgba(255,255,255,0.86);",
-        "margin: 0 8px 8px;"
-      ),
-      tags$table(
-        style = paste(
-          "width: 100%;",
-          "border-collapse: collapse;",
-          "font-size: 0.84rem;",
-          "line-height: 1.35;"
-        ),
-        tags$thead(
-          tags$tr(
-            style = "background: #f4f7f9; color: #24323d;",
-            tags$th(style = "text-align:left; padding: 10px 12px; border-bottom: 1px solid #d7e3ea;", "Site"),
-            tags$th(style = "text-align:center; padding: 10px 12px; border-bottom: 1px solid #d7e3ea; width: 90px;", "Symbol"),
-            lapply(selected_solutes, function(sol) {
-              tags$th(
-                style = "text-align:center; padding: 10px 12px; border-bottom: 1px solid #d7e3ea; min-width: 120px;",
-                names(cq_solute_choices)[cq_solute_choices == sol]
-              )
-            })
-          )
-        ),
-        tags$tbody(
-          lapply(seq_len(nrow(selected_sites)), function(i) {
-            row <- selected_sites[i, ]
-            symbol_name <- site_symbol_map[[row$Stream_ID]]
-
-            tags$tr(
-              style = "border-bottom: 1px solid #e5edf2;",
-              tags$td(
-                style = "padding: 10px 12px; vertical-align: middle; color: #24323d;",
-                row$Stream_Name
-              ),
-              tags$td(
-                style = "padding: 10px 12px; vertical-align: middle; text-align: center; color: #4f616b; font-size: 1.05rem; font-weight: 700;",
-                cq_site_symbol_glyphs[[symbol_name]]
-              ),
-              lapply(selected_solutes, function(sol) {
-                clr <- unname(solute_site_color_maps[[sol]][[row$Stream_ID]])
-                tags$td(
-                  style = "padding: 10px 12px; vertical-align: middle; text-align: center;",
-                  tags$span(
-                    style = "display: inline-flex; align-items: center; gap: 8px;",
-                    tags$span(
-                      style = paste0(
-                        "display:inline-block;",
-                        "width:24px;",
-                        "height:3px;",
-                        "border-radius:999px;",
-                        "background:", clr, ";"
-                      )
-                    ),
-                    tags$span(
-                      style = paste0(
-                        "display:inline-block;",
-                        "width:10px;",
-                        "height:10px;",
-                        "border-radius:999px;",
-                        "background:", clr, ";"
-                      )
-                    )
-                  )
-                )
-              })
-            )
-          })
-        )
+        "display: grid;",
+        "grid-template-columns: repeat(2, minmax(0, 1fr));",
+        "column-gap: 20px;",
+        "row-gap: 8px;",
+        "padding: 0 10px 10px 10px;",
+        "border-top: 1px solid #e1ebf0;"
       )
+      ,
+      legend_entries
     )
   })
 
   output$cq_fit_summaries <- renderUI({
     trendlines <- cq_trendline_summaries()
-
-    if (!isTRUE(input$cq_show_trendline)) {
-      return(
-        tags$p(
-          "Turn on trendlines in the sidebar to show fitted equations and R-squared values here.",
-          style = "color: #5d6d76; margin-bottom: 0;"
-        )
-      )
-    }
 
     if (is.null(trendlines) || nrow(trendlines) == 0) {
       return(
@@ -4122,14 +4034,7 @@ server <- function(input, output, session) {
               style = "border-bottom: 1px solid #e5edf2;",
               tags$td(
                 style = "padding: 10px 12px; vertical-align: top; color: #24323d;",
-                tags$div(
-                  style = "display: flex; align-items: center; gap: 0.45rem;",
-                  tags$span(
-                    style = "min-width: 18px; font-size: 1rem; color: #4f616b; text-align: center;",
-                    row$site_symbol_glyph
-                  ),
-                  tags$span(row$Stream_Name)
-                )
+                row$Stream_Name
               ),
               tags$td(
                 style = "padding: 10px 12px; vertical-align: top; color: #24323d;",
@@ -4230,8 +4135,16 @@ server <- function(input, output, session) {
           text = "C-Q Slope Distribution \u2014 Cl vs NO3",
           font = list(size = 14, color = "#2d2926")
         ),
-        xaxis = list(title = "C-Q Slope", gridcolor = "#d4e3f0"),
-        yaxis = list(title = "Number of Sites", gridcolor = "#d4e3f0"),
+        xaxis = list(
+          title = "C-Q Slope",
+          gridcolor = "#d4e3f0",
+          zeroline = FALSE
+        ),
+        yaxis = list(
+          title = "Number of Sites",
+          gridcolor = "#d4e3f0",
+          zeroline = FALSE
+        ),
         paper_bgcolor = plotly_bg$paper_bgcolor,
         plot_bgcolor = plotly_bg$plot_bgcolor,
         legend = right_side_legend(font_size = 10),
