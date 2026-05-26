@@ -3,10 +3,10 @@ if (!requireNamespace("rsconnect", quietly = TRUE)) {
 }
 
 app_name <- "hydro-modules"
-app_title <- "Hydro Modules"
+app_title <- "HydroViz"
 account_name <- "sidneyabush"
 
-bundle_files <- c(
+bundle_files <- unique(c(
   "app.R",
   "data/harmonized_complete.rds",
   "data/harmonized_partial.rds",
@@ -16,8 +16,9 @@ bundle_files <- c(
   "data/cq_slopes.rds",
   "data/activity2_map_precip_mm.tif",
   "data/activity2_map_cropland_pct.tif",
-  "data/activity2_map_impervious_pct.tif"
-)
+  "data/activity2_map_impervious_pct.tif",
+  list.files("www", recursive = TRUE, full.names = TRUE)
+))
 
 missing_files <- bundle_files[!file.exists(bundle_files)]
 if (length(missing_files) > 0) {

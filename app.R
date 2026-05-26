@@ -138,6 +138,54 @@ climate_zone_colors <- c(
   "Tundra" = "#8fb3c2"
 )
 
+about_logo_items <- list(
+  list(
+    src = "about_assets/oregon_state_university.webp",
+    alt = "Oregon State University logo",
+    label = "Oregon State University"
+  ),
+  list(
+    src = "about_assets/cu_cires.png",
+    alt = "University of Colorado Boulder and CIRES logo",
+    label = "CU Boulder / CIRES"
+  ),
+  list(
+    src = "about_assets/usgs.png",
+    alt = "United States Geological Survey logo",
+    label = "USGS"
+  ),
+  list(
+    src = "about_assets/nsf.png",
+    alt = "National Science Foundation logo",
+    label = "NSF"
+  ),
+  list(
+    src = "about_assets/nceas.png",
+    alt = "National Center for Ecological Analysis and Synthesis logo",
+    label = "NCEAS"
+  ),
+  list(
+    src = "about_assets/powell_center.jpg",
+    alt = "Powell Center logo",
+    label = "Powell Center"
+  ),
+  list(
+    src = "about_assets/umrr.jpg",
+    alt = "Upper Mississippi River Restoration Program logo",
+    label = "UMRR"
+  ),
+  list(
+    src = "about_assets/environment_canada.jpg",
+    alt = "Environment Canada logo",
+    label = "Environment Canada"
+  ),
+  list(
+    src = "about_assets/cuahsi.png",
+    alt = "CUAHSI logo",
+    label = "CUAHSI"
+  )
+)
+
 activity2_cl_accent <- "#975379"
 activity2_q_accent <- "#7f878d"
 activity3_no3_accent <- "#355c8a"
@@ -456,8 +504,8 @@ activity2_background_choices <- setNames(
 ui <- page_navbar(
   title = tags$div(
     class = "app-title-block",
-    tags$span("Hydro Modules", class = "app-title-kicker"),
-    tags$span("Stream Hydrology Teaching Module", class = "app-title-main")
+    tags$span("HydroViz", class = "app-title-kicker"),
+    tags$span("Hydrology Modules", class = "app-title-main")
   ),
   theme = bs_theme(
     base_font = font_google("Work Sans", wght = "400..700"),
@@ -820,6 +868,211 @@ ui <- page_navbar(
         height: 14px;
         border-radius: 999px;
         box-shadow: inset 0 0 0 1px rgba(36,50,61,0.14);
+      }
+
+      .about-copy {
+        font-size: 0.96rem;
+        line-height: 1.72;
+        color: #42545f;
+        padding: 0.2rem 0;
+      }
+
+      .about-copy p:last-child {
+        margin-bottom: 0;
+      }
+
+      .about-citation {
+        font-size: 0.9rem;
+        color: #55656e;
+      }
+
+      .about-logo-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+      }
+
+      .about-logo-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 72px;
+        padding: 0.15rem 0;
+      }
+
+      .about-logo-card img {
+        max-width: 100%;
+        max-height: 58px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+      }
+
+      .about-profile {
+        display: grid;
+        grid-template-columns: minmax(200px, 260px) 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .about-profile-media {
+        display: grid;
+        gap: 0.7rem;
+        align-content: start;
+      }
+
+      .about-profile-photo {
+        width: 100%;
+        aspect-ratio: 4 / 5;
+        border-radius: 16px;
+        object-fit: cover;
+        border: 1px solid rgba(215,227,234,0.92);
+        box-shadow: 0 10px 24px rgba(53,79,92,0.1);
+        background: #f2f6f8;
+      }
+
+      .about-profile-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.2rem;
+        background: linear-gradient(180deg, #f6f8fa, #eef3f6);
+        color: #6a7982;
+        font-size: 0.92rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .about-profile-name {
+        margin: 0 0 0.25rem;
+        color: #24323d;
+        font-size: 1.12rem;
+        font-weight: 700;
+      }
+
+      .about-profile-role {
+        margin: 0 0 0.8rem;
+        color: #5f8da9;
+        font-size: 0.86rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .about-profile-text {
+        color: #4f616b;
+        font-size: 0.95rem;
+        line-height: 1.7;
+      }
+
+      .about-profile-text p:last-child {
+        margin-bottom: 0;
+      }
+
+      .about-link-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.45rem;
+      }
+
+      .about-link-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+        padding: 0;
+        color: #385160;
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-decoration: none !important;
+        transition: color 0.2s ease, transform 0.2s ease;
+      }
+
+      .about-link-chip:hover {
+        color: #24323d;
+        transform: translateY(-1px);
+      }
+
+      .about-link-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+      }
+
+      .about-link-icon svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
+      .about-link-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        color: #2f6c8f;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+
+      .about-profile-contact {
+        margin-top: 1rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid rgba(215,227,234,0.9);
+        color: #4f616b;
+        font-size: 0.94rem;
+        line-height: 1.65;
+      }
+
+      .about-profile-contact p:last-child {
+        margin-bottom: 0;
+      }
+
+      .about-panel-stack {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .about-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .about-logo-panel {
+        width: 280px;
+      }
+
+      .about-profile-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      @media (max-width: 767px) {
+        .about-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .about-profile {
+          grid-template-columns: 1fr;
+        }
+
+        .about-profile-photo {
+          max-width: 260px;
+        }
+
+        .about-profile-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       a:focus-visible,
@@ -1672,19 +1925,169 @@ ui <- page_navbar(
 
   nav_panel(
     "About",
-    layout_columns(
-      col_widths = c(6, 6),
-      card(
-        card_header("About These Modules"),
+    tags$div(
+      class = "about-layout",
+      tags$div(
+        class = "about-panel-stack",
+        card(
+          card_header("About These Modules"),
+          tags$div(
+            class = "about-copy",
+            tags$p(
+              "The development of these modules was supported by the CUAHSI ",
+              "HydroInformatics Innovation Fellowship. Datasets included in ",
+              "these modules come from the United States Geological Survey ",
+              "(USGS), Upper Mississippi River Restoration Program, the Long ",
+              "Term Ecological Research Network, and Environment Canada."
+            ),
+            tags$p(
+              "The datasets from these agencies have been compiled by working ",
+              "group participants of a long-running synthesis group funded by ",
+              "the National Center for Ecological Analysis and Synthesis, ",
+              "USGS Powell Center, and the National Science Foundation."
+            ),
+            tags$p(
+              tags$strong("Published dataset: "),
+              tags$a(
+                "GlASS - Global Aggregation of Stream Silica",
+                href = "https://www.nature.com/articles/s41597-025-05937-2"
+              )
+            ),
+            tags$p(
+              class = "about-citation",
+              HTML(
+                "Jankowski, K. J., Johnson, K., Lyon, N. J., Bush, S. A., Julian, P., Sethna, L. R., McKnight, D. M., McDowell, W. H., Wymore, A. S., Kortelainen, P., Laudon, H., Heindel, R. C., Poste, A. E., Shogren, A., Worrall, F., Mosley, L., Sullivan, P. L. &amp; Carey, J. C. GlASS - Global Aggregation of Stream Silica. <em>Scientific Data</em> <strong>12</strong>, 1658 (2025)."
+              )
+            ),
+            tags$p(
+              class = "about-citation",
+              tags$strong("Shiny app code: "),
+              tags$a(
+                href = "https://github.com/sidneyabush/hydro-modules",
+                class = "about-link-chip",
+                tags$span(
+                  class = "about-link-icon",
+                  HTML(
+                    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+                  )
+                ),
+                "hydro-modules"
+              )
+            )
+          )
+        ),
         tags$div(
-          style = "font-size: 0.9em; line-height: 1.7; padding: 8px;",
-          tags$p("Plug for Si, Si 4 Lyfe")
+          class = "about-profile-grid",
+          card(
+            tags$div(
+              class = "about-profile",
+              tags$div(
+                class = "about-profile-media",
+                tags$img(
+                  src = "about_assets/keira_johnson.JPG",
+                  alt = "Photo of Keira Johnson",
+                  class = "about-profile-photo"
+                ),
+                tags$div(
+                  class = "about-link-row",
+                  tags$a(
+                    href = "https://scholar.google.com/citations?user=pC1oFD0AAAAJ&hl=en&oi=ao",
+                    class = "about-link-chip",
+                    tags$span("GS", class = "about-link-badge"),
+                    "Google Scholar"
+                  )
+                )
+              ),
+              tags$div(
+                class = "about-profile-text",
+                tags$h4("Keira Johnson", class = "about-profile-name"),
+                tags$p("MODULE DEVELOPMENT", class = "about-profile-role"),
+                tags$p(
+                  "Keira Johnson is a postdoctoral fellow at the Cooperative ",
+                  "Institute for Research in Environmental Sciences at University ",
+                  "of Colorado Boulder. Her work focuses on understanding how ",
+                  "water quality and quantity in river ecosystems are responding ",
+                  "to climate and land use change."
+                )
+              )
+            )
+          ),
+          card(
+            tags$div(
+              class = "about-profile",
+              tags$div(
+                class = "about-profile-media",
+                tags$img(
+                  src = "about_assets/sidney_bush.jpg",
+                  alt = "Photo of Sidney Bush",
+                  class = "about-profile-photo"
+                ),
+                tags$div(
+                  class = "about-link-row",
+                  tags$a(
+                    href = "https://github.com/sidneyabush",
+                    class = "about-link-chip",
+                    tags$span(
+                      class = "about-link-icon",
+                      HTML(
+                        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+                      )
+                    ),
+                    "GitHub"
+                  ),
+                  tags$a(
+                    href = "https://scholar.google.com/citations?user=y-LJGhcAAAAJ&hl=en&oi=ao",
+                    class = "about-link-chip",
+                    tags$span("GS", class = "about-link-badge"),
+                    "Google Scholar"
+                  ),
+                  tags$a(
+                    href = "https://www.linkedin.com/feed/",
+                    class = "about-link-chip",
+                    tags$span("in", class = "about-link-badge"),
+                    "LinkedIn"
+                  )
+                )
+              ),
+              tags$div(
+                class = "about-profile-text",
+                tags$h4("Sidney Bush", class = "about-profile-name"),
+                tags$p("SHINYAPP DEVELOPMENT", class = "about-profile-role"),
+                tags$p(
+                  "Additional app developer information can be added here."
+                )
+              )
+            )
+          )
         )
       ),
-      card(
-        card_header("Data, Funding, and Credits"),
-        tags$div(
-          style = "font-size: 0.9em; line-height: 1.7; padding: 8px;"
+      tags$div(
+        class = "about-panel-stack about-logo-panel",
+        card(
+          card_header("Partners and Support"),
+          tags$div(
+            class = "about-logo-grid",
+            lapply(about_logo_items, function(item) {
+              tags$div(
+                class = "about-logo-card",
+                tags$img(src = item$src, alt = item$alt)
+              )
+            })
+          )
+        ),
+        card(
+          card_header("Contact"),
+          tags$div(
+            class = "about-copy",
+            tags$p(
+              "For questions regarding the activities or synthesis project, ",
+              "please contact Keira Johnson ",
+              tags$a(
+                "keira.johnson@colorado.edu",
+                href = "mailto:keira.johnson@colorado.edu"
+              )
+            )
+          )
         )
       )
     )
