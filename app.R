@@ -1,9 +1,9 @@
-# Stream Hydrology Teaching Module
+# HydroViz teaching app
 #
-# Interactive app for exploring hydrology metrics (RBI, recession slope)
-# across North American LTER and USGS sites. Built for CUAHSI workshops.
+# Interactive app for exploring hydrology, snow, chloride, and C-Q
+# patterns across North American sites.
 #
-# The app expects pre-processed .rds files produced by prep_data.R.
+# The app reads the pre-processed files built by prep_data.R.
 
 suppressPackageStartupMessages({
   library(shiny)
@@ -21,7 +21,7 @@ suppressPackageStartupMessages({
 # or deployment with HYDRO_MODULES_APP_DATA_DIR.
 data_path <- Sys.getenv("HYDRO_MODULES_APP_DATA_DIR", unset = "data")
 
-# shared palette — keeps colors consistent between the map, plots, and UI
+# Shared palette used across the maps, plots, and UI.
 module_colors <- c(
   "primary" = "#2f6c8f",
   "secondary" = "#5a86a6",
@@ -142,47 +142,56 @@ about_logo_items <- list(
   list(
     src = "about_assets/oregon_state_university.webp",
     alt = "Oregon State University logo",
-    label = "Oregon State University"
+    label = "Oregon State University",
+    logo_class = "logo-osu"
   ),
   list(
     src = "about_assets/cu_cires.png",
     alt = "University of Colorado Boulder and CIRES logo",
-    label = "CU Boulder / CIRES"
+    label = "CU Boulder / CIRES",
+    logo_class = "logo-cucires"
   ),
   list(
     src = "about_assets/usgs.png",
     alt = "United States Geological Survey logo",
-    label = "USGS"
+    label = "USGS",
+    logo_class = "logo-usgs"
   ),
   list(
     src = "about_assets/nsf.png",
     alt = "National Science Foundation logo",
-    label = "NSF"
+    label = "NSF",
+    logo_class = "logo-nsf"
   ),
   list(
     src = "about_assets/nceas.png",
     alt = "National Center for Ecological Analysis and Synthesis logo",
-    label = "NCEAS"
+    label = "NCEAS",
+    logo_class = "logo-nceas"
   ),
   list(
     src = "about_assets/powell_center.jpg",
     alt = "Powell Center logo",
-    label = "Powell Center"
+    label = "Powell Center",
+    logo_class = "logo-powell"
   ),
   list(
     src = "about_assets/umrr.jpg",
     alt = "Upper Mississippi River Restoration Program logo",
-    label = "UMRR"
+    label = "UMRR",
+    logo_class = "logo-umrr"
   ),
   list(
     src = "about_assets/environment_canada.jpg",
     alt = "Environment Canada logo",
-    label = "Environment Canada"
+    label = "Environment Canada",
+    logo_class = "logo-environment-canada"
   ),
   list(
     src = "about_assets/cuahsi.png",
     alt = "CUAHSI logo",
-    label = "CUAHSI"
+    label = "CUAHSI",
+    logo_class = "logo-cuahsi"
   )
 )
 
@@ -196,7 +205,7 @@ solute_colors <- c(
   "NO3" = activity3_no3_accent
 )
 
-# these get reused in multiple ggplots, so pulling them out here
+# Shared ggplot styling used in several figures.
 base_plot_theme <- theme_minimal(base_family = "Work Sans") +
   theme(
     plot.background = element_rect(fill = "#fcfbf7", color = NA),
@@ -254,7 +263,7 @@ right_side_legend <- function(font_size = 11) {
   )
 }
 
-# keep the app startup failure explicit if a required data product is missing
+# Stop early if a required app data file is missing.
 required_data_files <- c(
   "harmonized_complete.rds",
   "harmonized_partial.rds",
@@ -403,8 +412,7 @@ load_activity2_raster <- function(file_path) {
   }
   raster_layer <- terra::rast(file_path)
 
-  # Keep Activity 2 focused on North America so the map opens on the
-  # teaching region instead of the full raster extent.
+  # Crop to North America so the map opens on the teaching region.
   north_america_extent <- terra::ext(-179, -50, 5, 85)
   terra::crop(raster_layer, north_america_extent)
 }
@@ -430,7 +438,7 @@ activity2_background_focus_bounds <- list(
   "impervious" = activity2_landcover_focus_bounds
 )
 
-# load the largest data object once at startup; the rest are read on demand
+# Load the largest data object once at startup; read the rest on demand.
 discharge_global <- read_app_data("discharge.rds")
 
 activity2_background_specs <- list(
@@ -871,59 +879,163 @@ ui <- page_navbar(
       }
 
       .about-copy {
-        font-size: 0.96rem;
-        line-height: 1.72;
+        font-size: 0.97rem;
+        line-height: 1.68;
         color: #42545f;
         padding: 0.2rem 0;
+      }
+
+      .about-copy p {
+        margin-bottom: 0.9rem;
       }
 
       .about-copy p:last-child {
         margin-bottom: 0;
       }
 
+      .about-top-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.95fr);
+        gap: 1rem;
+      }
+
+      .about-reference-block {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(193,206,214,0.62);
+      }
+
+      .about-reference-section + .about-reference-section {
+        margin-top: 1rem;
+      }
+
+      .about-reference-heading {
+        margin: 0 0 0.28rem;
+        color: #5f8da9;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .about-reference-title {
+        margin: 0;
+        color: #5f8da9;
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      .about-reference-title strong {
+        color: inherit;
+        font-weight: 700;
+      }
+
+      .about-reference-title a {
+        color: #24323d;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .about-reference-title a:hover {
+        text-decoration: underline;
+      }
+
+      .about-reference-title .about-link-chip {
+        color: #24323d;
+        font-size: inherit;
+        font-weight: 700;
+      }
+
       .about-citation {
-        font-size: 0.9rem;
+        font-size: 0.98rem;
         color: #55656e;
+        line-height: 1.58;
+      }
+
+      .about-section-subtitle {
+        margin: 0 0 0.5rem;
+        color: #24323d;
+        font-size: 0.96rem;
+        font-weight: 700;
       }
 
       .about-logo-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 0.9rem;
+        grid-template-columns: repeat(5, minmax(110px, 1fr));
+        align-items: center;
+        justify-items: center;
+        gap: 0.8rem 1rem;
+        width: 100%;
       }
 
       .about-logo-card {
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 72px;
-        padding: 0.15rem 0;
+        min-height: 64px;
+        padding: 0.1rem 0.2rem;
+        width: 100%;
       }
 
       .about-logo-card img {
         max-width: 100%;
-        max-height: 58px;
+        max-height: 56px;
         width: auto;
         height: auto;
         object-fit: contain;
       }
 
+      .about-logo-card .logo-nceas {
+        max-height: 70px;
+      }
+
+      .about-logo-card .logo-cucires {
+        max-height: 76px;
+      }
+
+      .about-logo-card .logo-nsf,
+      .about-logo-card .logo-powell {
+        max-height: 74px;
+      }
+
+      .about-logo-card .logo-umrr,
+      .about-logo-card .logo-environment-canada {
+        max-height: 80px;
+      }
+
+      .about-logo-card .logo-powell {
+        max-height: 84px;
+      }
+
+      .about-logo-card .logo-umrr {
+        max-height: 92px;
+      }
+
+      .about-logo-card .logo-environment-canada {
+        max-height: 90px;
+      }
+
+      .about-logo-card .logo-cuahsi {
+        max-height: 62px;
+      }
+
       .about-profile {
         display: grid;
-        grid-template-columns: minmax(200px, 260px) 1fr;
-        gap: 1rem;
+        grid-template-columns: 154px 1fr;
+        gap: 0.62rem;
         align-items: start;
       }
 
       .about-profile-media {
         display: grid;
-        gap: 0.7rem;
+        gap: 0.32rem;
         align-content: start;
+        width: 154px;
+        min-width: 154px;
+        max-width: 154px;
       }
 
       .about-profile-photo {
         width: 100%;
-        aspect-ratio: 4 / 5;
+        aspect-ratio: 4 / 4.8;
         border-radius: 16px;
         object-fit: cover;
         border: 1px solid rgba(215,227,234,0.92);
@@ -951,7 +1063,7 @@ ui <- page_navbar(
       }
 
       .about-profile-role {
-        margin: 0 0 0.8rem;
+        margin: 0 0 0.65rem;
         color: #5f8da9;
         font-size: 0.86rem;
         font-weight: 700;
@@ -959,10 +1071,17 @@ ui <- page_navbar(
         text-transform: uppercase;
       }
 
+      .about-profile-pronouns {
+        margin: 0 0 0.4rem;
+        color: #6c7b84;
+        font-size: 0.86rem;
+        font-style: italic;
+      }
+
       .about-profile-text {
         color: #4f616b;
         font-size: 0.95rem;
-        line-height: 1.7;
+        line-height: 1.62;
       }
 
       .about-profile-text p:last-child {
@@ -976,14 +1095,18 @@ ui <- page_navbar(
         gap: 0.45rem;
       }
 
+      .about-link-row-offset {
+        padding-left: 0.4rem;
+      }
+
       .about-link-chip {
         display: inline-flex;
         align-items: center;
         gap: 0.42rem;
         padding: 0;
         color: #385160;
-        font-size: 0.82rem;
-        font-weight: 700;
+        font-size: 0.74rem;
+        font-weight: 400;
         line-height: 1.2;
         text-decoration: none !important;
         transition: color 0.2s ease, transform 0.2s ease;
@@ -1022,44 +1145,103 @@ ui <- page_navbar(
       }
 
       .about-profile-contact {
-        margin-top: 1rem;
-        padding-top: 0.9rem;
+        margin-top: auto;
+        padding-top: 0.65rem;
         border-top: 1px solid rgba(215,227,234,0.9);
         color: #4f616b;
-        font-size: 0.94rem;
-        line-height: 1.65;
+        font-size: 0.9rem;
+        line-height: 1.52;
       }
 
       .about-profile-contact p:last-child {
         margin-bottom: 0;
       }
 
-      .about-panel-stack {
-        display: grid;
-        gap: 1rem;
-        align-content: start;
-      }
-
       .about-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 280px;
-        gap: 1rem;
-        align-items: start;
+        grid-template-columns: minmax(0, 1.34fr) minmax(430px, 0.74fr);
+        grid-template-areas: 'left people';
+        column-gap: 1rem;
+        align-items: stretch;
       }
 
-      .about-logo-panel {
-        width: 280px;
+      .about-layout > div {
+        min-height: 0;
       }
 
-      .about-profile-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
+      .about-left-stack {
+        grid-area: left;
+        display: flex;
+        flex-direction: column;
+        gap: 0.08rem;
+      }
+
+      .about-layout > div > .card,
+      .about-layout > div > .bslib-card,
+      .about-layout > div .card,
+      .about-layout > div .bslib-card {
+        height: 100%;
+      }
+
+      .about-layout > div .card-body,
+      .about-layout > div .bslib-card-body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .about-card-people .card-body,
+      .about-card-people .bslib-card-body {
+        padding: 0.72rem 0.82rem;
+      }
+
+      .about-card-people {
+        grid-area: people;
+        align-self: stretch;
+      }
+
+      .about-people-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        height: 100%;
+      }
+
+      .about-people-stack > .about-profile {
+        padding-top: 0.55rem;
+      }
+
+      .about-people-stack .about-profile {
+        height: auto;
+      }
+
+      .about-people-divider {
+        margin: 1.9rem 0;
+        border: 0;
+        border-top: 1px solid rgba(215,227,234,0.9);
+      }
+
+      .about-profile {
+        height: 100%;
+      }
+
+      .about-profile-text {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .about-profile-contact {
+        margin-top: auto;
       }
 
       @media (max-width: 767px) {
         .about-layout {
           grid-template-columns: 1fr;
+          grid-template-areas: 'left' 'people';
+          align-items: start;
+          min-height: 0;
         }
 
         .about-profile {
@@ -1070,8 +1252,14 @@ ui <- page_navbar(
           max-width: 260px;
         }
 
-        .about-profile-grid {
-          grid-template-columns: 1fr;
+        .about-logo-panel {
+          height: auto;
+          width: auto;
+        }
+
+        .about-logo-grid {
+          grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+          gap: 0.5rem 0.65rem;
         }
       }
 
@@ -1928,57 +2116,97 @@ ui <- page_navbar(
     tags$div(
       class = "about-layout",
       tags$div(
-        class = "about-panel-stack",
-        card(
-          card_header("About These Modules"),
-          tags$div(
-            class = "about-copy",
-            tags$p(
-              "The development of these modules was supported by the CUAHSI ",
-              "HydroInformatics Innovation Fellowship. Datasets included in ",
-              "these modules come from the United States Geological Survey ",
-              "(USGS), Upper Mississippi River Restoration Program, the Long ",
-              "Term Ecological Research Network, and Environment Canada."
-            ),
-            tags$p(
-              "The datasets from these agencies have been compiled by working ",
-              "group participants of a long-running synthesis group funded by ",
-              "the National Center for Ecological Analysis and Synthesis, ",
-              "USGS Powell Center, and the National Science Foundation."
-            ),
-            tags$p(
-              tags$strong("Published dataset: "),
-              tags$a(
-                "GlASS - Global Aggregation of Stream Silica",
-                href = "https://www.nature.com/articles/s41597-025-05937-2"
-              )
-            ),
-            tags$p(
-              class = "about-citation",
-              HTML(
-                "Jankowski, K. J., Johnson, K., Lyon, N. J., Bush, S. A., Julian, P., Sethna, L. R., McKnight, D. M., McDowell, W. H., Wymore, A. S., Kortelainen, P., Laudon, H., Heindel, R. C., Poste, A. E., Shogren, A., Worrall, F., Mosley, L., Sullivan, P. L. &amp; Carey, J. C. GlASS - Global Aggregation of Stream Silica. <em>Scientific Data</em> <strong>12</strong>, 1658 (2025)."
-              )
-            ),
-            tags$p(
-              class = "about-citation",
-              tags$strong("Shiny app code: "),
-              tags$a(
-                href = "https://github.com/sidneyabush/hydro-modules",
-                class = "about-link-chip",
-                tags$span(
-                  class = "about-link-icon",
-                  HTML(
-                    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+        class = "about-left-stack",
+        tags$div(
+          class = "about-card-main",
+          card(
+            card_header("About These Modules"),
+            tags$div(
+              class = "about-copy",
+              tags$p(
+                "The development of these modules was supported by the CUAHSI ",
+                "HydroInformatics Innovation Fellowship."
+              ),
+              tags$p(
+                "Datasets included in these modules come from the United States ",
+                "Geological Survey (USGS), Upper Mississippi River Restoration ",
+                "Program, the Long Term Ecological Research Network, and ",
+                "Environment Canada."
+              ),
+              tags$p(
+                "The datasets from these agencies have been compiled by ",
+                "working group participants of a long-running synthesis group ",
+                "funded by the National Center for Analysis and Synthesis ",
+                "(NCEAS), ",
+                "USGS Powell Center, and the National Science Foundation: ",
+                tags$a(
+                  tags$strong("Global River Chemistry synthesis group"),
+                  href = "https://global-river-chem.github.io"
+                )
+              ),
+              hr(),
+              tags$p("Resources", class = "about-section-subtitle"),
+              tags$div(
+                class = "about-reference-section",
+                tags$p(
+                  class = "about-reference-title",
+                  tags$strong("Published dataset: "),
+                  tags$a(
+                    "GlASS - Global Aggregation of Stream Silica",
+                    href = "https://www.nature.com/articles/s41597-025-05937-2"
                   )
                 ),
-                "hydro-modules"
+                tags$p(
+                  class = "about-citation",
+                  HTML(
+                    "Jankowski, K. J., Johnson, K., Lyon, N. J., Bush, S. A., Julian, P., Sethna, L. R., McKnight, D. M., McDowell, W. H., Wymore, A. S., Kortelainen, P., Laudon, H., Heindel, R. C., Poste, A. E., Shogren, A., Worrall, F., Mosley, L., Sullivan, P. L., &amp; Carey, J. C. (2025). GlASS - Global Aggregation of Stream Silica. <em>Scientific Data, 12</em>, Article 1658."
+                  )
+                ),
+                tags$p(
+                  class = "about-reference-title",
+                  tags$strong("Shiny app code: "),
+                  tags$a(
+                    href = "https://github.com/sidneyabush/hydro-modules",
+                    class = "about-link-chip",
+                    tags$span(
+                      class = "about-link-icon",
+                      HTML(
+                        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+                      )
+                    ),
+                    "hydro-modules"
+                  )
+                )
               )
             )
           )
         ),
         tags$div(
-          class = "about-profile-grid",
+          class = "about-logo-panel",
           card(
+            card_header("Partners and Support"),
+            tags$div(
+              class = "about-logo-grid",
+              lapply(about_logo_items, function(item) {
+                tags$div(
+                  class = "about-logo-card",
+                  tags$img(
+                    src = item$src,
+                    alt = item$alt,
+                    class = item$logo_class
+                  )
+                )
+              })
+            )
+          )
+        )
+      ),
+      tags$div(
+        class = "about-card-people",
+        card(
+          card_header("People"),
+          tags$div(
+            class = "about-people-stack",
             tags$div(
               class = "about-profile",
               tags$div(
@@ -1989,7 +2217,7 @@ ui <- page_navbar(
                   class = "about-profile-photo"
                 ),
                 tags$div(
-                  class = "about-link-row",
+                  class = "about-link-row about-link-row-offset",
                   tags$a(
                     href = "https://scholar.google.com/citations?user=pC1oFD0AAAAJ&hl=en&oi=ao",
                     class = "about-link-chip",
@@ -2000,19 +2228,30 @@ ui <- page_navbar(
               ),
               tags$div(
                 class = "about-profile-text",
-                tags$h4("Keira Johnson", class = "about-profile-name"),
+                tags$h4("Keira Johnson, PhD", class = "about-profile-name"),
+                tags$p("she/her/hers", class = "about-profile-pronouns"),
                 tags$p("MODULE DEVELOPMENT", class = "about-profile-role"),
                 tags$p(
                   "Keira Johnson is a postdoctoral fellow at the Cooperative ",
-                  "Institute for Research in Environmental Sciences at University ",
-                  "of Colorado Boulder. Her work focuses on understanding how ",
-                  "water quality and quantity in river ecosystems are responding ",
-                  "to climate and land use change."
+                  "Institute for Research in Environmental Sciences (CIRES) at ",
+                  "University of Colorado Boulder. Her work focuses on ",
+                  "understanding how water quality and quantity in river ",
+                  "ecosystems are responding to climate and land use change."
+                ),
+                tags$div(
+                  class = "about-profile-contact",
+                  tags$p(
+                    "For questions regarding the activities or synthesis project, ",
+                    "please contact Keira Johnson at ",
+                    tags$a(
+                      "keira.johnson@colorado.edu",
+                      href = "mailto:keira.johnson@colorado.edu"
+                    )
+                  )
                 )
               )
-            )
-          ),
-          card(
+            ),
+            tags$hr(class = "about-people-divider"),
             tags$div(
               class = "about-profile",
               tags$div(
@@ -2023,7 +2262,7 @@ ui <- page_navbar(
                   class = "about-profile-photo"
                 ),
                 tags$div(
-                  class = "about-link-row",
+                  class = "about-link-row about-link-row-offset",
                   tags$a(
                     href = "https://github.com/sidneyabush",
                     class = "about-link-chip",
@@ -2051,49 +2290,37 @@ ui <- page_navbar(
               ),
               tags$div(
                 class = "about-profile-text",
-                tags$h4("Sidney Bush", class = "about-profile-name"),
+                tags$h4("Sidney A Bush, PhD", class = "about-profile-name"),
+                tags$p("she/her/hers", class = "about-profile-pronouns"),
                 tags$p("SHINYAPP DEVELOPMENT", class = "about-profile-role"),
                 tags$p(
-                  "Additional app developer information can be added here."
+                  "Sidney Bush is a Research Scientist at Oregon State ",
+                  "University. Her work combines catchment hydrology, ",
+                  "critical-zone science, stream biogeochemistry, and ",
+                  "large-scale data synthesis to understand how water and ",
+                  "solutes move through watersheds, and how river-system ",
+                  "function responds to climate variability, land use, and ",
+                  "wildfire disturbance."
+                ),
+                tags$div(
+                  class = "about-profile-contact",
+                  tags$p(
+                    "For questions regarding the Shiny app, please contact ",
+                    "Sidney Bush at ",
+                    tags$a(
+                      "sidney.bush@oregonstate.edu",
+                      href = "mailto:sidney.bush@oregonstate.edu"
+                    )
+                  )
                 )
               )
             )
           )
         )
       ),
-      tags$div(
-        class = "about-panel-stack about-logo-panel",
-        card(
-          card_header("Partners and Support"),
-          tags$div(
-            class = "about-logo-grid",
-            lapply(about_logo_items, function(item) {
-              tags$div(
-                class = "about-logo-card",
-                tags$img(src = item$src, alt = item$alt)
-              )
-            })
-          )
-        ),
-        card(
-          card_header("Contact"),
-          tags$div(
-            class = "about-copy",
-            tags$p(
-              "For questions regarding the activities or synthesis project, ",
-              "please contact Keira Johnson ",
-              tags$a(
-                "keira.johnson@colorado.edu",
-                href = "mailto:keira.johnson@colorado.edu"
-              )
-            )
-          )
-        )
-      )
     )
   )
 )
-
 
 # --- Server ----------------------------------------------------------------
 
